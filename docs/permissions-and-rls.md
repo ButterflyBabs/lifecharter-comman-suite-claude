@@ -139,8 +139,9 @@ onward, though the rule applies to any AI action added earlier too.
   document; `auth.uid()` / `workspace_members` joins will be the standard RLS policy
   pattern once Phase 1 tables exist. No policy language is finalized yet — this is a
   Phase 1 build task.
-- The Supabase MCP connector available in this environment currently has access only
-  to a different project ("lifecharter-bot"). It does not yet have access to the
-  project ID specified for this build (`itxfgxmdyqpcytmgdysa`). No RLS work can be
-  verified against the real project until that connection is fixed. See
-  [migration-and-deployment.md](migration-and-deployment.md).
+- The Supabase MCP connector was reconnected to the correct account (ButterflyBabs's
+  Org) during Phase 0. The project (`itxfgxmdyqpcytmgdysa`) had one pre-existing
+  table with an effectively-open RLS policy (`USING (true)`); it was empty and not
+  part of the canonical model, so it was dropped rather than migrated. See
+  [migration-and-deployment.md](migration-and-deployment.md) for detail. The project
+  now has zero tables and zero security advisor findings — a clean slate for Phase 1.

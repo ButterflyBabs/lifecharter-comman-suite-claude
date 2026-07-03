@@ -69,9 +69,10 @@ Recorded per the "ask before assuming, record every assumption" instruction:
    instruction) but is preserved for reference/possible reuse of copy or logic.
 2. **Appendix A supersedes Section 5 for route names** — see
    [navigation-and-routes.md](navigation-and-routes.md).
-3. **Supabase MCP tooling in this environment cannot reach the specified project.**
-   See [migration-and-deployment.md](migration-and-deployment.md) for full detail and
-   current status.
+3. **Supabase MCP tooling initially could not reach the specified project** (it was
+   authorized under a different Supabase account/org). Resolved during Phase 0 —
+   see [migration-and-deployment.md](migration-and-deployment.md) for full detail,
+   including a stray pre-existing table found and removed on first real connection.
 4. **No Node.js runtime was available in the execution sandbox** used to scaffold this
    project — all config and route files were hand-written rather than generated via
    `create-next-app`/`npm install`, and `npm run build`/`npm run dev` have not been
