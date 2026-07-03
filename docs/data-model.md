@@ -5,12 +5,26 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 0:** No tables exist in the target Supabase project yet. Per the
-build order (Section 18), the `workspaces` / membership / RLS core spine is built in
-**Phase 1**, not Phase 0. This document exists now so that every subsequent phase's
-migrations can be checked against one canonical list instead of re-deriving schema
-from prose. See [migration-and-deployment.md](migration-and-deployment.md) for current
-Supabase connection status.
+**Status as of Phase 1:** 26 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+Level Security enabled and zero security-advisor findings. This is the full 10.3
+(Tenancy, Identity, and Governance) and 10.9 subset (notifications, assets, templates),
+plus the 10.4 subset that makes up the unified work engine (tasks, task_dependencies,
+outcomes, decisions, approvals, blockers, comments). Migrations live in
+`supabase/migrations/`, applied via the Supabase MCP connector and tracked in Supabase's
+own migration history (`list_migrations`). See
+[migration-and-deployment.md](migration-and-deployment.md) for full detail.
+
+Built in Phase 1 (10.3 + 10.9 subset + 10.4 subset):
+`workspaces`, `business_units`, `user_profiles`, `workspace_members`, `roles`,
+`permissions`, `role_permissions`, `member_roles`, `audit_events`, `activity_events`,
+`tasks`, `task_dependencies`, `outcomes`, `decisions`, `approvals`, `blockers`,
+`comments`, `notifications`, `notification_preferences`, `assets`, `asset_versions`,
+`folders`, `tags`, `asset_tags`, `templates`, `template_versions`.
+
+Not yet built (remaining 10.4 roadmap/audit/gate objects, and all of 10.5 through
+10.9's revenue/client/ops/AI objects) — these land in Phases 2 through 7 per the
+build order (Section 18), each phase adding only the objects its acceptance criteria
+actually require.
 
 ## 10.1 Data Architecture Principles
 
@@ -287,3 +301,43 @@ they are not repeated in every row.
 - `business_command_domains` (10.4) is the twelve-domain framework referenced
   throughout Section 2; its seed data (the twelve domains) is a Phase 2 build
   requirement, not Phase 0/1.
+
+## Assumptions Recorded in Phase 1
+
+- **Deviated from cascading hard deletes where the spec's principle (10.1) calls for
+  soft-delete.** `archived_at` exists on every table it makes sense for (workspaces,
+  business_units, tasks, outcomes, decisions, assets, templates, etc.), but
+  foreign-key `ON DELETE CASCADE` is used for true parent/child ownership (e.g.
+  deleting a workspace cascades to its business_units — there's no "orphaned
+  business unit" state that makes sense). Hard deletes only cascade from a
+  workspace or a directly-owning parent record, never as the default for
+  business-critical standalone records.
+- **`workspace_id` was added to every tenant-owned table**, including junction/version
+  tables the spec's "minimum fields" column doesn't explicitly list it for (e.g.
+  `task_dependencies`, `asset_versions`, `asset_tags`, `template_versions`). This
+  follows 10.1's principle directly ("every tenant-owned record must include
+  workspace_id") and keeps RLS policies a direct column check instead of a join,
+  which matters for tables that will see high write volume.
+- **`review_instance_id` on `outcomes`** has no foreign-key constraint yet —
+  `review_instances` doesn't exist until Phase 2 (Review Center). The column is a
+  forward reference; the FK constraint will be added in the Phase 2 migration that
+  creates `review_instances`.
+- **`notifications` and `notification_preferences` are not tenant-scoped** the way
+  most tables are — RLS keys on `recipient_id`/`user_id` matching `auth.uid()`
+  directly, since a notification or preference belongs to its user regardless of
+  workspace context. `notifications.workspace_id` exists (nullable) for UI filtering
+  only, not as an RLS boundary.
+- **Permission enforcement is intentionally coarse in Phase 1.** RLS enforces the
+  workspace-membership boundary (the non-negotiable) everywhere, plus named-role
+  checks (`Workspace Owner` / `Administrator`, sometimes `AI Governance Reviewer`)
+  for admin-gated tables (`audit_events`, role/permission management). The
+  `permissions` and `role_permissions` tables exist and are seeded as a real catalog,
+  but no RLS policy yet queries them directly for a resource.action.scope decision —
+  that's a later refinement once real per-role configuration UI exists to manage it.
+  See [permissions-and-rls.md](permissions-and-rls.md).
+- **"Current workspace" has no persisted selection mechanism yet.** A user with
+  multiple workspace memberships gets whichever workspace RLS/the query returns
+  first — there's no cookie or preference row remembering their last choice. Real
+  workspace switching is a near-term follow-up, not deferred to a specific later
+  phase, since it's needed as soon as more than one workspace/user exists in
+  practice.

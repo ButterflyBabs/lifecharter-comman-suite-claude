@@ -88,3 +88,51 @@ execution sandbox):
   deployment verification is complete: build and runtime both confirmed, not
   assumed.** See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
   for full detail.
+
+## Phase 1 Test Status
+
+**RLS and permission tests (Section 19.1) exist and pass**, run as real SQL against
+the live project rather than described in prose:
+
+- `supabase/tests/rls_workspace_isolation.sql` — two fake tenants, proves cross-tenant
+  read/write denial, admin-gated table access, and immediate suspension enforcement.
+  Sanity-checked by first confirming a deliberately-failing assertion actually
+  surfaces as an error (so a clean run is known to mean "passed").
+- `supabase/tests/audit_logging.sql` — proves membership/role changes actually write
+  to `audit_events` via triggers.
+
+Both wrap their setup and assertions in `BEGIN; ... ROLLBACK;`, verified afterward by
+querying row counts to confirm zero residue.
+
+**Database migration tests**: every migration was applied via `apply_migration` and
+followed immediately by `get_advisors` (security) — two real issues were caught this
+way (a mutable-search-path function, and two `SECURITY DEFINER` functions callable
+via unintended public RPC) and fixed before moving on, not just applied and assumed
+clean.
+
+**Deployment/runtime verification**: pushed the Phase 1 commit, confirmed the Vercel
+build reached `READY`, then fetched the live URL twice — `/command/today`
+unauthenticated correctly redirects to `/login` (proving middleware route protection
+works in production, not just in code review), and `/login` returns a real rendered
+sign-in form.
+
+**Honestly not done yet:**
+
+- **No automated CI test runner.** The SQL tests above are run manually via the
+  Supabase MCP `execute_sql` tool. Wiring them into a CI pipeline (e.g., a GitHub
+  Action that runs them against a preview branch on every PR) is real, valuable work
+  that hasn't happened — `npm test` still has zero tests.
+- **No manual assistive-technology testing.** The accessibility foundation (skip
+  link, focus-visible outlines, `prefers-reduced-motion`/`prefers-contrast` support,
+  semantic landmarks, `aria-current`/`aria-pressed`) was verified structurally
+  (correct HTML/ARIA in the rendered output) but not tested with a real screen
+  reader, a keyboard-only pass through every interactive element, or a browser zoom
+  test. Section 18's Phase 1 acceptance criterion ("keyboard, screen reader, zoom,
+  and responsive smoke tests pass") is **not** fully satisfied by structural review
+  alone — this is flagged honestly rather than checked off.
+- **No end-to-end auth flow test** (sign up → confirm email → sign in → land on
+  Command Center) was run against a real email address; the code path was reviewed
+  and the redirect logic verified, but Supabase's mailer wasn't exercised end-to-end.
+- **Login/sign-up haven't been exercised with real credentials** — form rendering
+  and the unauthenticated-redirect behavior are confirmed; a full round-trip
+  (create account, receive email, click link, sign in, see workspace data) is not.

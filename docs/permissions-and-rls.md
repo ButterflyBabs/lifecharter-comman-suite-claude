@@ -5,12 +5,32 @@ the non-negotiable security baseline (see Appendix D, Mariposa Execution Directi
 Row Level Security is enforced from day one, on every exposed tenant table, with no
 exceptions carved out for convenience.
 
-**Status as of Phase 0:** no tables exist yet, so no RLS policies exist yet either.
-Phase 1 ("Core spine and tenant safety") is where `workspaces`, `workspace_members`,
-`roles`, `permissions`, and their RLS policies are created — and per its acceptance
-criteria, workspace isolation must pass direct database and API tests before Phase 2
-begins. This document is written now so Phase 1 has a checklist instead of a blank
-page.
+**Status as of Phase 1: workspace isolation is built and verified, not assumed.**
+`workspaces`, `workspace_members`, `roles`, `permissions`, `role_permissions`, and
+`member_roles` all exist with RLS enabled. A real, transaction-wrapped SQL test
+(`supabase/tests/rls_workspace_isolation.sql`) creates two fake tenants and proves:
+
+- A user cannot read another workspace's rows by direct query (workspaces, tasks).
+- A user cannot write another workspace's rows by direct query (a cross-tenant
+  `UPDATE` affects 0 rows).
+- `audit_events` is readable only by `Workspace Owner` / `Administrator` /
+  `AI Governance Reviewer` — a plain member gets 0 rows.
+- A **suspended** member of a real workspace sees 0 rows anywhere — Section 11.3's
+  "suspended users lose access immediately" is enforced by the RLS policy itself
+  (`status = 'active'` is part of every membership check), not by an application-layer
+  check that could be bypassed.
+
+A second test (`supabase/tests/audit_logging.sql`) proves membership and role changes
+actually write to `audit_events` via triggers (Section 11.6), not just that the table
+exists. Both tests run inside `BEGIN; ... ROLLBACK;` — verified by intentionally
+triggering a failing assertion first and confirming it surfaces as an error, so a
+clean run is known to mean "passed," not "didn't run."
+
+**Not yet true, honestly:** these are SQL files run manually via the Supabase MCP
+connector, not wired into an automated CI pipeline — see
+[testing.md](testing.md#phase-1-test-status) for what CI wiring would take.
+Permission enforcement is coarser than the full model below describes — see
+"Phase 1 Enforcement, Honestly" beneath the permission model.
 
 ## 11.1 Default Workspace Roles
 
@@ -51,6 +71,29 @@ Examples:
 
 Scopes should include: `own`, `assigned`, `team`, `business unit`, `workspace`,
 `client self-service`.
+
+### Phase 1 Enforcement, Honestly
+
+The `roles`, `permissions`, `role_permissions`, and `member_roles` tables exist and
+are seeded (15 system roles — the union of Section 4's and this section's slightly
+different lists, see the assumptions below — and an 18-permission starter catalog
+scoped to what Phase 1 actually built). But **no RLS policy queries
+`role_permissions` at request time yet.** Phase 1's actual enforcement is two-tier:
+
+1. **Workspace membership** (`status = 'active'` in `workspace_members`) gates
+   almost everything — the non-negotiable, and what the isolation test proves.
+2. **Named-role checks** (`private.has_workspace_role(workspace_id, array[...])`)
+   gate the handful of admin-only operations that exist so far: updating a
+   workspace, managing business units/roles/membership, reading `audit_events`.
+
+This means every non-admin role (Marketing, Salesperson, Coach, etc.) currently has
+*identical* data access within a workspace — the fine-grained `resource.action.scope`
+model this section describes is a real, populated catalog, not yet a live decision
+path. Building RLS policies that actually consult `role_permissions` per-request is
+appropriate once real per-role UI exists to configure it (a workspace owner needs to
+*see* what "Marketing can access X" means before that boundary should be enforced) —
+targeted for the phase that first needs it (likely Phase 4, when Marketing/Sales/
+Finance roles start seeing genuinely different data).
 
 ## 11.3 Row Level Security Requirements
 
@@ -145,3 +188,33 @@ onward, though the rule applies to any AI action added earlier too.
   part of the canonical model, so it was dropped rather than migrated. See
   [migration-and-deployment.md](migration-and-deployment.md) for detail. The project
   now has zero tables and zero security advisor findings — a clean slate for Phase 1.
+
+## Assumptions Recorded in Phase 1
+
+- **Seeded 15 system roles, the union of Section 4's "Recommended roles" and this
+  section's "Default workspace roles" lists**, since they disagree: Section 4
+  includes `Contractor` but omits `AI Governance Reviewer` and
+  `External Advisor or Auditor`; this section has the reverse. The union costs
+  nothing (extra role options, not fewer) and avoids guessing which list is
+  authoritative.
+- **RLS pattern uses `SECURITY DEFINER` helper functions in a `private` schema**
+  (`private.active_workspace_ids()`, `private.has_workspace_role()`), not exposed via
+  PostgREST. This is the standard Supabase pattern for avoiding infinite recursion
+  when a table's own RLS policy needs to check membership in that same table
+  (`workspace_members`' policy calling a function that queries `workspace_members`
+  would recurse if the function weren't `SECURITY DEFINER`, which bypasses RLS for
+  its owner's queries).
+- **Two `SECURITY DEFINER` functions were caught and fixed by the security advisor**
+  during Phase 1: `handle_new_user()` (auto-creates a `user_profiles` row on
+  signup) and `log_audit_event()` (the audit trigger) were both flagged as callable
+  directly via `/rest/v1/rpc/...` by any signed-in or anonymous user, which was
+  never intended — they're trigger-only plumbing. Fixed by revoking `EXECUTE` from
+  `public`/`anon`/`authenticated`; re-verified both triggers still fire correctly
+  after the revoke (trigger execution doesn't require the invoking role to hold
+  `EXECUTE` on the function).
+- **Audit coverage is deliberately narrow in Phase 1**: triggers exist on
+  `workspace_members` and `member_roles` (the two sensitive tables Phase 1 actually
+  built — membership and role-assignment changes, per Section 11.6's minimum list).
+  Coverage for stage changes, financial changes, offer/price/contract changes, etc.
+  is added as those tables are built in later phases — Section 11.6's full list
+  can't be satisfied before the tables it refers to exist.

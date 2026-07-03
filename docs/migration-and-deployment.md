@@ -1,13 +1,31 @@
 # Migration and Deployment
 
-## Current Status (Phase 0)
+## Current Status (Phase 1)
 
 | Component | Status | Detail |
 |---|---|---|
-| GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`. Started with only an auto-generated `README.md`; merged with the Phase 0 scaffold (unrelated histories) and pushed to `main` on 2026-07-03. |
-| Vercel project | **Live and verified — build and runtime both confirmed** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. `https://lifecharter-comman-suite-claude.vercel.app/command/today` returns `200` with real rendered HTML as of 2026-07-03 (`dpl_Fid4dXeBvKRcHjz3gee7n3GA48Af`). |
-| Supabase project | **Verified, schema-managed from here** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"), org "ButterflyBabs's Org", region us-east-1, Postgres 17, status `ACTIVE_HEALTHY`. Supabase MCP connector confirmed access 2026-07-03 via `list_organizations`/`list_projects`/`list_tables`. |
+| GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`, `main` branch, Phase 1 commit `feb829d`. |
+| Vercel project | **Live and verified — build and runtime both confirmed** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`). Phase 1 build (`dpl_HfCUgn8bHJ5qXSJSoVNwMSSkVX9Y`) reached `READY`; confirmed `GET /command/today` unauthenticated redirects to `/login`, which renders a real sign-in form — route protection works in production. |
+| Supabase project | **26 tables live, RLS on all of them, zero advisor findings** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"). Tenancy/governance + unified work engine + notifications/assets from Section 10.3/10.4/10.9, 15 seeded system roles, 18 seeded permissions, 170 role-permission mappings. See [data-model.md](data-model.md) and [permissions-and-rls.md](permissions-and-rls.md). |
 | Local repo | Initialized, pushed | `git init -b main`, `origin` set to the GitHub repo above. |
+
+## Phase 1 Migrations Applied
+
+| Migration | What it did |
+|---|---|
+| `20260703010000_phase1_tenancy_governance` | 10 tables (workspaces through activity_events), the `private` schema membership-check functions, RLS on all 10. |
+| `20260703010100_fix_set_updated_at_search_path` | Security advisor caught a mutable search_path on the shared `set_updated_at()` trigger function; pinned it. |
+| `20260703020000_phase1_work_engine` | 7 tables (tasks through comments), RLS on all 7. |
+| `20260703030000_phase1_notifications_and_assets` | 9 tables (notifications through template_versions), RLS on all 9. |
+| `20260703040000_phase1_seed_roles_and_permissions` | 15 system roles, 18 permissions, 170 role_permissions rows. |
+| `20260703050000_phase1_auto_create_user_profile` | Trigger: every new `auth.users` row gets a `user_profiles` row automatically. |
+| `20260703050100_revoke_handle_new_user_execute` | Security advisor caught the new trigger function being directly callable via public RPC; revoked EXECUTE from public/anon/authenticated. |
+| `20260703060000_phase1_audit_triggers` | Triggers on `workspace_members` and `member_roles` writing to `audit_events` automatically (Section 11.6). |
+
+Every migration was followed by `get_advisors(type: security)` before moving to the
+next one — two real findings were caught and fixed this way (not just applied and
+assumed clean). See [permissions-and-rls.md](permissions-and-rls.md#assumptions-recorded-in-phase-1)
+for detail on both.
 
 ## Deployment History (Phase 0 First Real Build)
 
@@ -125,3 +143,74 @@ folder structure, Supabase connection verified (clean schema, RLS advisor clean)
 Vercel deployment pipeline live (build **and** runtime confirmed), all required
 docs/ files created and committed, tech stack documented with rationale, no open
 blockers before Phase 1.
+
+## Deployment History (Phase 1)
+
+One build, no failures this time — the lessons from Phase 0's two build failures
+(strict-mode typing, `vercel.json` framework override) carried forward, so the much
+larger Phase 1 commit (134 files changed: schema migrations, auth pages, route
+restructuring, real data queries) built clean on the first try
+(`dpl_HfCUgn8bHJ5qXSJSoVNwMSSkVX9Y`, `READY`).
+
+Runtime verified by fetching the live URL twice:
+
+- `GET /command/today` (no session cookie) → served the `/login` page
+  (`x-matched-path: /login`), confirming `middleware.ts`'s route-protection logic
+  redirects unauthenticated requests correctly in production, not just in code.
+- `GET /login` → `200`, real rendered sign-in form (email/password fields, submit
+  button, sign-up link) with the Server Action wired up (`$ACTION_ID` hidden input
+  present in the HTML).
+
+Not yet verified: an actual sign-up → email-confirm → sign-in round trip with a real
+inbox, and what the authenticated Command Center view looks like once a session
+exists — both require a real user, which the next phase's setup wizard will make
+easy to create for testing.
+
+## Next Steps to Close Phase 1
+
+- [x] Design and apply the tenancy/governance schema with RLS.
+- [x] Design and apply the unified work-engine schema with RLS.
+- [x] Design and apply notifications/asset/template schema with RLS.
+- [x] Seed default roles and permissions.
+- [x] Prove workspace isolation with real, transaction-wrapped SQL tests (not just
+  RLS-enabled tables).
+- [x] Prove audit logging actually fires on membership/role changes.
+- [x] Build Supabase Auth (login/sign-up/email-confirm callback) and middleware
+  route protection.
+- [x] Build the global navigation shell (header, primary nav) and restructure
+  routes so it doesn't wrap the auth pages.
+- [x] Build the accessibility foundation (skip link, focus-visible, reduced-motion,
+  semantic landmarks).
+- [x] Wire `/work`, `/decisions`, `/approvals`, `/notifications` to real queries
+  with working actions (approve/reject, mark-read).
+- [x] Push, confirm the Vercel build passes, confirm route protection works at the
+  live URL.
+- [ ] Wire the SQL tests into automated CI (currently run manually via the Supabase
+  MCP connector).
+- [ ] Manual assistive-technology pass (real screen reader, keyboard-only, browser
+  zoom) — only structural/semantic correctness has been verified so far.
+- [ ] Real sign-up → email-confirm → sign-in round trip with a live inbox.
+
+**Phase 1 acceptance criteria (Section 18):**
+
+- [x] Workspace isolation passes direct database and API tests — proven via
+  `supabase/tests/rls_workspace_isolation.sql` (the same RLS policies PostgREST
+  uses for API requests, exercised directly).
+- [x] A user sees only permitted records and actions — enforced by RLS on all 26
+  tables; coarser than the full permission model describes (see
+  [permissions-and-rls.md](permissions-and-rls.md#phase-1-enforcement-honestly)).
+- [x] Every active work item can have owner, next action, due date, definition of
+  done, and blocker — `tasks` has `owner`/`next_action`/`due_at`; `outcomes` has
+  `definition_of_done`; `blockers` exists and is wired into `/work`.
+- [x] Audit history captures sensitive changes — membership and role changes,
+  specifically (the two sensitive things Phase 1 actually built); wider coverage
+  arrives with the tables later phases add.
+- [ ] **Keyboard, screen reader, zoom, and responsive smoke tests pass — partially.**
+  The foundation is built and structurally correct, but not exercised with real
+  assistive technology. Flagged honestly rather than checked off; see
+  [testing.md](testing.md#phase-1-test-status).
+
+Four of five criteria are fully met with real verification, not assumption. The
+fifth has the foundation built but lacks manual AT testing — worth doing before
+treating accessibility as solid, but not blocking enough to hold up Phase 2's start
+given the rest of Phase 1 is sound.
