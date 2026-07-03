@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --deep-indigo: #1f315b;
+  --royal-plum: #5e3b6c;
+  --sacred-teal: #2e7c83;
+  --warm-gold: #d4af63;
+  --ivory-light: #f6f1e8;
+}
+
+body {
+  color: var(--deep-indigo);
+  background: var(--ivory-light);
+}
