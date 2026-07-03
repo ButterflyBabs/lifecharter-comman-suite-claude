@@ -4,10 +4,31 @@
 
 | Component | Status | Detail |
 |---|---|---|
-| GitHub repo | Exists, empty | `ButterflyBabs/lifecharter-comman-suite-claude`, contained only an auto-generated `README.md` at Phase 0 start. |
-| Vercel project | Exists, linked | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. Has one prior production deployment in `READY` state (framework detection: none — the placeholder README-only commit). |
+| GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`. Started with only an auto-generated `README.md`; merged with the Phase 0 scaffold (unrelated histories) and pushed to `main` on 2026-07-03. |
+| Vercel project | Linked, pipeline triggers on push | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. See "Deployment history" below — two failed builds diagnosed and fixed; third build's result to be confirmed. |
 | Supabase project | **Verified, schema-managed from here** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"), org "ButterflyBabs's Org", region us-east-1, Postgres 17, status `ACTIVE_HEALTHY`. Supabase MCP connector confirmed access 2026-07-03 via `list_organizations`/`list_projects`/`list_tables`. |
-| Local repo | Initialized | `git init -b main`, `origin` set to the GitHub repo above. Not yet pushed (see blocker below). |
+| Local repo | Initialized, pushed | `git init -b main`, `origin` set to the GitHub repo above. |
+
+## Deployment History (Phase 0 First Real Build)
+
+Since no Node.js runtime was available to test the hand-written scaffold before
+pushing, the first two Vercel builds surfaced real issues — this is exactly the
+verification the brief called for, working as intended:
+
+1. **Build 1 (`dpl_BjaAMFJsaFFVEjXf4yjqJ66XTCri`) — failed at type-check.**
+   `lib/supabase/server.ts:15` — `setAll(cookiesToSet)` had an implicit `any`
+   parameter under `strict: true`. Same pattern existed in `middleware.ts`. Fixed by
+   typing both as `CookieToSet[]` using `@supabase/ssr`'s `CookieOptionsWithName`.
+2. **Build 2 (`dpl_7ebSChkvZZEnmy5BgTowdjRBRJCk`) — compiled successfully, failed at
+   output-directory detection.** All 93 routes compiled and prerendered correctly;
+   the failure was `No Output Directory named "public" found` — a **Vercel project
+   setting**, not a code bug. The project's Framework Preset was `null`/"Other"
+   (left over from the initial README-only placeholder deployment, which had no
+   `package.json` for Vercel to detect a framework from). Fixed by adding
+   `vercel.json` with `"framework": "nextjs"`, which overrides the stored project
+   setting per Vercel's docs, rather than requiring a manual dashboard change.
+3. **Build 3 (`dpl_<pending>`) — expected to pass.** Confirm state before treating
+   Phase 0's Vercel acceptance criterion as met.
 
 ## Resolved Blockers
 
@@ -28,18 +49,16 @@
    Re-ran `list_tables`/`get_advisors` after: zero tables, zero security lints —
    confirmed clean before any Phase 1 schema work begins.
 
-## Open Blockers From Phase 0
+## Resolved Blockers (continued)
 
-1. **No GitHub push credentials in the execution sandbox.** `git` can read the public
-   repo anonymously but has no stored credentials to push. User decision: a
-   personal access token (repo scope) will be supplied for this session to push
-   directly.
-2. **No Node.js runtime in the execution sandbox.** All Next.js/TypeScript/Tailwind
-   config and route files were hand-written rather than generated and installed via
-   `npm`. `npm install`, `npm run build`, and `npm run dev` have not been run.
-   **This must be the first thing verified** once the code reaches an environment
-   with Node — either locally or via the Vercel build itself, which will fail loudly
-   if something is wrong.
+2. **No GitHub push credentials in the execution sandbox.** Resolved: user supplied
+   a personal access token for this session; used inline in the push URL only
+   (never written to `.git/config` or any file) and not reused beyond this session.
+3. **No Node.js runtime in the execution sandbox.** The hand-written scaffold was
+   never locally `npm install`'d/built before pushing. Resolved by treating Vercel's
+   own build as the first real compile check — see "Deployment History" above. Two
+   real issues surfaced and were fixed; this is the intended verification path when
+   no local Node is available, not a shortcut around it.
 
 ## Deployment Pipeline (Target Steady State)
 
@@ -68,8 +87,9 @@
 
 - [x] User reconnects Supabase MCP to include `itxfgxmdyqpcytmgdysa`; re-run
   `list_tables` / `get_advisors` to confirm and update this doc.
-- [ ] User supplies a GitHub PAT for this session; push the initial commit.
-- [ ] Confirm Vercel picks up the new commit and produces a fresh deployment (check
-  build logs for the hand-written config before assuming success).
-- [ ] Run `npm install && npm run build` in an environment with Node to confirm the
-  hand-written scaffold actually compiles.
+- [x] User supplies a GitHub PAT for this session; push the initial commit.
+- [x] Confirm Vercel picks up new commits and builds them (check build logs for the
+  hand-written config before assuming success). Two real issues found and fixed —
+  see Deployment History above.
+- [ ] Confirm the fix commit (adding `vercel.json`) produces a `READY` deployment —
+  pending as of this write-up.

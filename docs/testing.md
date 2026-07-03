@@ -63,14 +63,17 @@ should be re-run after every phase that adds a new tenant table.
 
 ## Phase 0 Test Status
 
-No automated tests exist. The only verification performed in Phase 0:
+No automated test suite exists yet (`npm test` has no tests to run). Verification
+performed in Phase 0, in lieu of a local Node.js runtime (none was available in the
+execution sandbox):
 
-- Confirmed the Supabase project (`itxfgxmdyqpcytmgdysa`) is reachable and its
-  publishable key is valid, via a direct HTTPS call to `/auth/v1/settings` (not via
-  the Supabase MCP integration — see [migration-and-deployment.md](migration-and-deployment.md)).
-- Confirmed the Vercel project exists, is linked to the GitHub repo, and has a
-  prior placeholder deployment in `READY` state.
-- Have **not** run `npm install`, `npm run build`, or `npm run dev` — no Node.js
-  runtime was available in the execution sandbox. This is an open item, not a
-  pass: someone with Node available (local machine or the next Vercel build) must
-  confirm the scaffold actually compiles before Phase 1 work begins on top of it.
+- Confirmed the Supabase project (`itxfgxmdyqpcytmgdysa`) is reachable, schema-managed
+  (RLS advisor clean, zero tables after removing a stray pre-existing one), and the
+  MCP connector has real access — see [migration-and-deployment.md](migration-and-deployment.md).
+- Confirmed the GitHub-to-Vercel pipeline triggers automatically on push: pushed a
+  commit, Vercel built it, the build **failed twice** (a real TypeScript
+  strict-mode bug, then a Vercel project framework-detection issue) — both
+  diagnosed from Vercel's build logs and fixed. Treating Vercel's own build as the
+  compile check (rather than assuming a local `npm install` would have passed) is
+  what actually caught these. See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
+  for the resulting build's final state.
