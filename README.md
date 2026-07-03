@@ -1,2 +1,2 @@
-# lifecharter-comman-suite-claude
+# lifecharter-command-suite-claude
 LifeCharter Command Suite web app created on Claude
