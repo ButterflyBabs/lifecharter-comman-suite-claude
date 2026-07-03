@@ -5,7 +5,7 @@
 | Component | Status | Detail |
 |---|---|---|
 | GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`. Started with only an auto-generated `README.md`; merged with the Phase 0 scaffold (unrelated histories) and pushed to `main` on 2026-07-03. |
-| Vercel project | Build passes; **runtime not yet functional** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. Build 3 reached `READY`, but every page 500s at runtime — see Build 4 below. |
+| Vercel project | **Live and verified — build and runtime both confirmed** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. `https://lifecharter-comman-suite-claude.vercel.app/command/today` returns `200` with real rendered HTML as of 2026-07-03 (`dpl_Fid4dXeBvKRcHjz3gee7n3GA48Af`). |
 | Supabase project | **Verified, schema-managed from here** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"), org "ButterflyBabs's Org", region us-east-1, Postgres 17, status `ACTIVE_HEALTHY`. Supabase MCP connector confirmed access 2026-07-03 via `list_organizations`/`list_projects`/`list_tables`. |
 | Local repo | Initialized, pushed | `git init -b main`, `origin` set to the GitHub repo above. |
 
@@ -47,8 +47,11 @@ verification the brief called for, working as intended:
    After adding these (scope to Production/Preview/Development as needed), redeploy
    — either click "Redeploy" on the latest deployment in the Vercel dashboard, or a
    new push will trigger a fresh build automatically.
-5. **User confirmed env vars added 2026-07-03.** This commit triggers the redeploy
-   to confirm a real page renders (Build 5 below, once confirmed).
+5. **User added the Supabase env vars in Vercel and redeployed (`dpl_A2tfxrra3UZm8u7KdWpJtPqmXc2J`,
+   `dpl_4GQUcFz9q9DwiUmGntYj9ZUZJgYG`).** A further push (`dpl_Fid4dXeBvKRcHjz3gee7n3GA48Af`)
+   confirmed the fix: `GET /command/today` now returns `200` with correctly
+   rendered HTML (`x-vercel-cache: PRERENDER`), not a 500. **The GitHub-to-Vercel
+   pipeline is fully verified end-to-end — build and runtime both.**
 
 ## Resolved Blockers
 
@@ -113,8 +116,12 @@ verification the brief called for, working as intended:
   see Deployment History above.
 - [x] Confirm the fix commit (adding `vercel.json`) produces a `READY` deployment —
   confirmed, Build 3 (`dpl_2DoFxik7HzYu3ecsecFnihLf5Ub9`).
-- [ ] **User adds the three Supabase environment variables to the Vercel project**
-  (see Build 4 above) — this is the one remaining item before Phase 0 can be signed
-  off. The live app 500s on every route until this is done.
-- [ ] After env vars are added, redeploy and confirm a route actually renders
-  (not just that the build succeeds).
+- [x] User adds the three Supabase environment variables to the Vercel project.
+- [x] After env vars are added, redeploy and confirm a route actually renders (not
+  just that the build succeeds) — confirmed, `GET /command/today` returns `200`.
+
+**Phase 0 acceptance criteria are all met:** repository scaffolded with the correct
+folder structure, Supabase connection verified (clean schema, RLS advisor clean),
+Vercel deployment pipeline live (build **and** runtime confirmed), all required
+docs/ files created and committed, tech stack documented with rationale, no open
+blockers before Phase 1.

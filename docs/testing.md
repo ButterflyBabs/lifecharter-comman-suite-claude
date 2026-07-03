@@ -83,5 +83,8 @@ execution sandbox):
   URL and checking `get_runtime_logs`, not by the build status alone — a reminder
   that "build succeeded" and "app works" are different claims, worth keeping in
   mind for Phase 1's smoke tests (Section 19.3: "run production smoke tests").
-  See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
-  for exact values needed to close this out.
+- User added the env vars and redeployed; re-fetching the live URL confirmed
+  `GET /command/today` returns `200` with correctly rendered HTML. **Phase 0's
+  deployment verification is complete: build and runtime both confirmed, not
+  assumed.** See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
+  for full detail.
