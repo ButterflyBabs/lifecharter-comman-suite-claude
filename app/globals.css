@@ -14,3 +14,32 @@ body {
   color: var(--deep-indigo);
   background: var(--ivory-light);
 }
+
+/* Accessibility baseline (Section 16.1) */
+
+/* Visible on every interactive element, not just the ones that remembered to
+   add a Tailwind focus-visible utility — a global fallback so keyboard focus
+   is never invisible. */
+:focus-visible {
+  outline: 2px solid var(--sacred-teal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --deep-indigo: #000000;
+    --ivory-light: #ffffff;
+    --soft-taupe: #4a4a4a;
+  }
+}

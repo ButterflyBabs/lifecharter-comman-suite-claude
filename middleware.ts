@@ -27,7 +27,24 @@ export async function middleware(request: NextRequest) {
 
   // Refreshes the auth session on every request so Server Components
   // always see a valid (or correctly expired) session.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isAuthRoute = pathname === "/login" || pathname === "/sign-up" || pathname.startsWith("/auth/");
+
+  if (!user && !isAuthRoute) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (user && (pathname === "/login" || pathname === "/sign-up")) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/command/today";
+    return NextResponse.redirect(redirectUrl);
+  }
 
   return response;
 }
