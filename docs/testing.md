@@ -75,5 +75,13 @@ execution sandbox):
   strict-mode bug, then a Vercel project framework-detection issue) — both
   diagnosed from Vercel's build logs and fixed. Treating Vercel's own build as the
   compile check (rather than assuming a local `npm install` would have passed) is
-  what actually caught these. See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
-  for the resulting build's final state.
+  what actually caught these.
+- The build then reached `READY`, but hitting the live URL immediately surfaced a
+  **third, runtime-only failure** that a green build didn't catch: every route
+  500s (`MIDDLEWARE_INVOCATION_FAILED`) because the Supabase environment variables
+  were never set in the Vercel project. Caught by actually fetching the deployed
+  URL and checking `get_runtime_logs`, not by the build status alone — a reminder
+  that "build succeeded" and "app works" are different claims, worth keeping in
+  mind for Phase 1's smoke tests (Section 19.3: "run production smoke tests").
+  See [migration-and-deployment.md](migration-and-deployment.md#deployment-history-phase-0-first-real-build)
+  for exact values needed to close this out.

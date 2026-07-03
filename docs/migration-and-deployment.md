@@ -5,7 +5,7 @@
 | Component | Status | Detail |
 |---|---|---|
 | GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`. Started with only an auto-generated `README.md`; merged with the Phase 0 scaffold (unrelated histories) and pushed to `main` on 2026-07-03. |
-| Vercel project | Linked, pipeline triggers on push | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. See "Deployment history" below — two failed builds diagnosed and fixed; third build's result to be confirmed. |
+| Vercel project | Build passes; **runtime not yet functional** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`) under team `amilynne-carrolls-projects`. Build 3 reached `READY`, but every page 500s at runtime — see Build 4 below. |
 | Supabase project | **Verified, schema-managed from here** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"), org "ButterflyBabs's Org", region us-east-1, Postgres 17, status `ACTIVE_HEALTHY`. Supabase MCP connector confirmed access 2026-07-03 via `list_organizations`/`list_projects`/`list_tables`. |
 | Local repo | Initialized, pushed | `git init -b main`, `origin` set to the GitHub repo above. |
 
@@ -27,8 +27,26 @@ verification the brief called for, working as intended:
    `package.json` for Vercel to detect a framework from). Fixed by adding
    `vercel.json` with `"framework": "nextjs"`, which overrides the stored project
    setting per Vercel's docs, rather than requiring a manual dashboard change.
-3. **Build 3 (`dpl_<pending>`) — expected to pass.** Confirm state before treating
-   Phase 0's Vercel acceptance criterion as met.
+3. **Build 3 (`dpl_2DoFxik7HzYu3ecsecFnihLf5Ub9`) — reached `READY`.** All 93 routes
+   built. Build-time verification is now genuinely complete.
+4. **Runtime failure found immediately after, on the live URL.** Every request
+   (`GET /command/today` and, by construction, every other route) 500s with
+   `MIDDLEWARE_INVOCATION_FAILED`. Runtime logs show the real cause:
+   `Error: Your project's URL and Key are required to create a Supabase client!`
+   — **`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` were
+   never set as Vercel environment variables.** `.env.example` documents the
+   required keys, but nothing has populated them in the Vercel project itself, and
+   no MCP tool available in this environment can set Vercel env vars — this needs a
+   human to add them via Project Settings → Environment Variables (or the Vercel
+   CLI). **Values needed:**
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://itxfgxmdyqpcytmgdysa.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_sGjDbfJxA7_33C_WH88E4g_B1h5t2dA`
+   - `SUPABASE_SERVICE_ROLE_KEY` = (paste directly into Vercel; do not share this
+     value in chat — it bypasses Row Level Security)
+
+   After adding these (scope to Production/Preview/Development as needed), redeploy
+   — either click "Redeploy" on the latest deployment in the Vercel dashboard, or a
+   new push will trigger a fresh build automatically.
 
 ## Resolved Blockers
 
@@ -91,5 +109,10 @@ verification the brief called for, working as intended:
 - [x] Confirm Vercel picks up new commits and builds them (check build logs for the
   hand-written config before assuming success). Two real issues found and fixed —
   see Deployment History above.
-- [ ] Confirm the fix commit (adding `vercel.json`) produces a `READY` deployment —
-  pending as of this write-up.
+- [x] Confirm the fix commit (adding `vercel.json`) produces a `READY` deployment —
+  confirmed, Build 3 (`dpl_2DoFxik7HzYu3ecsecFnihLf5Ub9`).
+- [ ] **User adds the three Supabase environment variables to the Vercel project**
+  (see Build 4 above) — this is the one remaining item before Phase 0 can be signed
+  off. The live app 500s on every route until this is done.
+- [ ] After env vars are added, redeploy and confirm a route actually renders
+  (not just that the build succeeds).
