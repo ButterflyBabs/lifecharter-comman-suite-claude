@@ -47,6 +47,8 @@ verification the brief called for, working as intended:
    After adding these (scope to Production/Preview/Development as needed), redeploy
    — either click "Redeploy" on the latest deployment in the Vercel dashboard, or a
    new push will trigger a fresh build automatically.
+5. **User confirmed env vars added 2026-07-03.** This commit triggers the redeploy
+   to confirm a real page renders (Build 5 below, once confirmed).
 
 ## Resolved Blockers
 
