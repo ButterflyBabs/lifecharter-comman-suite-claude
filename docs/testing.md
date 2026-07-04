@@ -797,7 +797,52 @@ gaps:**
   management page it always was; this is a real, pre-existing gap
   surfaced (not created) by this work, flagged honestly rather than
   expanded into scope to fix.
-- **1 of Phase 8's 5 deferred items remains**: multi-brand/multi-business
-  enhancements.
+- **1 of Phase 8's 5 deferred items remained at this point**:
+  multi-brand/multi-business enhancements. (Now built too — see the
+  section below.)
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
+
+## Multi-Brand/Multi-Business Test Status
+
+Built the last item of Phase 8's deferred remainder: scoping operational
+data (`clients`, `leads`, `opportunities`, `invoices`, `campaigns`) by
+`business_unit_id`, confirmed in scope with the user before building
+(the alternatives — business-unit-level branding, or business-unit-scoped
+roles/permissions — were offered and declined).
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/multi_brand_scoping.sql` — proves a client can be
+  attributed to a business unit in its own workspace, that attributing it
+  to another workspace's business unit is rejected on both `INSERT` and
+  `UPDATE` by the new `enforce_business_unit_same_workspace` trigger (a
+  plain exception, not an RLS `WITH CHECK` failure, since this is a
+  data-integrity rule rather than a visibility rule — no new RLS boundary
+  was added at all, since business units already live inside the existing
+  `workspace_id` tenant boundary), and that clearing `business_unit_id`
+  back to `null` still works.
+
+**This build reached `READY` on the first deploy.**
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/clients/overview`'s
+  and `/revenue/overview`'s business-unit filters, and the business-unit
+  selects on the clients/leads/opportunities/campaigns creation forms,
+  have been verified at the SQL layer (the same-workspace trigger) and
+  the build/runtime layer (compiles, both routes resolve and correctly
+  redirect an unauthenticated request to `/login` with a 200), but no one
+  has actually filtered a real list by business unit or watched an
+  invoice inherit its business unit from a real opportunity.
+- **Proposals and contracts are not scoped by business unit** — only the
+  five tables named above carry `business_unit_id`; extending it further
+  was judged out of scope for this pass and is documented honestly rather
+  than silently left inconsistent.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+- **Every item from Phase 8's original 5-item deferred list is now
+  complete**: template marketplace, mobile/voice-first refinements,
+  privacy-safe benchmarking, white-label workspace options, and
+  multi-brand/multi-business enhancements.

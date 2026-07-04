@@ -289,6 +289,25 @@ covers whatever columns a statement touches. Verified with
 the uniqueness constraint, and a plain member's `INSERT` attempt being
 rejected with an actual `insufficient_privilege` RLS error.
 
+**Also built: multi-brand/multi-business enhancements, the last item from
+Phase 8's original deferred list, adding no new RLS policy at all.**
+`clients`, `leads`, `opportunities`, `invoices`, and `campaigns` each gain
+a nullable `business_unit_id` — an added attribute inside the same
+`workspace_id` tenant boundary every existing policy on those tables
+already enforces, not a new read surface, so none of their RLS policies
+changed. What *did* need a new guard is a data-integrity rule RLS doesn't
+express: a record's `business_unit_id` must belong to a business unit in
+that record's own workspace. `enforce_business_unit_same_workspace`, a
+plain `BEFORE INSERT OR UPDATE` trigger (not an RLS policy), checks this
+directly and raises a plain exception on violation — deliberately not
+folded into a `WITH CHECK` clause, since this is an integrity constraint
+between two columns on the same row, not a visibility rule about who can
+see or write the row at all. Verified with
+`supabase/tests/multi_brand_scoping.sql`, covering same-workspace
+attribution succeeding, cross-workspace attribution being rejected on
+both `INSERT` and `UPDATE`, and clearing the column back to `null` still
+working.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

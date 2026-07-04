@@ -7,10 +7,12 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, the entire Settings section (Appendix A), and 4 of Phase 8's
-5 deferred items — the template marketplace, mobile/voice-first refinements,
-benchmarking with privacy-safe aggregation, and white-label workspace
-options.** Every canonical route in the app is now built. 178 tables are live
+Library + Search, the entire Settings section (Appendix A), and all 5 of Phase 8's
+deferred items — the template marketplace, mobile/voice-first refinements,
+benchmarking with privacy-safe aggregation, white-label workspace options, and
+multi-brand/multi-business enhancements.** Every canonical route in the app is
+now built. 178 tables are live (multi-brand added columns and a trigger to
+existing tables, not a new one)
 in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
@@ -20,10 +22,10 @@ Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
 subscription billing/entitlements, usage limits, and data export/deletion,
 deferring template marketplace, white-label workspaces, cross-tenant
 benchmarking, mobile/voice refinements, and multi-brand enhancements to
-explicit future requests; all but multi-brand enhancements have since been
+explicit future requests; all five have since been
 built (see the Phase 8, template marketplace, mobile/voice-first,
-benchmarking, and white-label assumptions sections below). Only multi-brand/
-multi-business enhancements remain deferred from Phase 8's original list.
+benchmarking, white-label, and multi-brand assumptions sections below).
+Every item from Phase 8's original 5-item deferred list is now complete.
 Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
@@ -96,12 +98,14 @@ original 10.3-10.9 modules):
 `usage_counters`, `billing_webhook_events`, `data_export_requests`,
 `data_deletion_requests`.
 
-Not yet built from Phase 8's full requirement list: template marketplace,
-certified implementation pathways, white-label client workspace options,
+Deferred from Phase 8's full requirement list at the time, per the user's own
+scoping decision, and since built: template marketplace, certified
+implementation pathways, white-label client workspace options,
 privacy-safe benchmarking, mobile/voice-first refinements, and multi-brand/
-multi-business enhancements beyond what `business_units` (Phase 1) already
-provides — deferred to explicit future requests per the user's own scoping
-decision (see Assumptions Recorded in Phase 8 below).
+multi-business enhancements beyond what `business_units` (Phase 1) originally
+provided (see Assumptions Recorded in Phase 8, and the later marketplace,
+white-label, benchmarking, mobile/voice-first, and multi-brand sections,
+below). All five are now complete.
 
 **Also built, alongside Phase 8: `/settings/users`** — the first of the
 never-built Section 5/10.3 Settings placeholders to actually be built out,
@@ -201,8 +205,25 @@ no reason to be visible outside its own workspace. Lives inside
 surfaced, not created, while building this: no dedicated client-facing
 portal view exists yet for a client to actually see this branding —
 `/clients/portal` has only ever been the coach-facing management page.
-See Assumptions below. Only multi-brand/multi-business enhancements
-remain deferred from Phase 8's original list.
+See Assumptions below.
+
+**Also built: multi-brand/multi-business enhancements, the last item from
+Phase 8's original deferred list.** Confirmed with the user before building:
+scope operational data by business unit rather than extend branding or
+roles. `clients`, `leads`, `opportunities`, `invoices`, and `campaigns` each
+gain a nullable `business_unit_id` (no new table — `business_units` has
+existed since Phase 1). No new RLS boundary: a business unit already lives
+inside the same `workspace_id` tenant boundary every policy enforces, so
+this is an added attribute, not a new isolation surface. A new
+`enforce_business_unit_same_workspace` trigger closes a data-integrity gap
+instead — a record's `business_unit_id` must belong to a business unit in
+its *own* workspace, checked on insert and update, independent of RLS.
+Invoices inherit their business unit automatically from the source
+opportunity; the other four get a selector on their creation forms. A
+business-unit filter was added to `/clients/overview` and
+`/revenue/overview` (proposals and contracts aren't scoped — they don't
+carry `business_unit_id`). See Assumptions below. **Every item from Phase
+8's original 5-item deferred list is now complete.**
 
 ## 10.1 Data Architecture Principles
 
@@ -1440,3 +1461,52 @@ they are not repeated in every row.
   a silent no-op, since `INSERT` under RLS raises rather than affecting
   0 rows).
 - **This build reached `READY` on the first deploy.**
+
+## Assumptions Recorded in the Multi-Brand/Multi-Business build
+
+- **Scope confirmed before building**: of three options presented (scope
+  operational data by business unit; extend branding to the business-unit
+  level; business-unit-scoped roles/permissions), the user chose scoping
+  operational data — the interpretation the docs had already been
+  pointing at ("beyond what `business_units` already provides").
+- **No new table and no new RLS boundary** — `business_units` has existed
+  since Phase 1; `clients`, `leads`, `opportunities`, `invoices`, and
+  `campaigns` each gain a nullable `business_unit_id` column plus an
+  index. A business unit already lives inside the same `workspace_id`
+  tenant boundary every RLS policy since Phase 1 enforces, so attributing
+  a record to one doesn't cross any isolation boundary — it's a new
+  attribute, not a new read surface.
+- **A data-integrity trigger closes a gap RLS doesn't cover**: RLS blocks
+  reading another workspace's rows, but nothing stopped a form bug (or a
+  direct API call) from writing a *foreign* business unit's ID onto a
+  record inside the *correct* workspace. `enforce_business_unit_same_workspace`
+  (a `BEFORE INSERT OR UPDATE` trigger on all five tables) checks that
+  `business_unit_id`, if set, belongs to a business unit with the same
+  `workspace_id` as the record itself, raising a plain exception
+  otherwise — not an RLS `WITH CHECK`, since this is an integrity rule,
+  not a visibility rule.
+- **Invoices inherit their business unit rather than asking twice** —
+  invoices are created from `createOrder`/`createInvoice` against an
+  `opportunity_id`; the action now looks up that opportunity's
+  `business_unit_id` and copies it onto the invoice automatically, since
+  asking a user to redundantly re-pick the same business unit for an
+  invoice tied to a specific opportunity would be busywork, not a real
+  choice.
+- **Only two hub pages got a filter**: `/clients/overview` and
+  `/revenue/overview` (covering leads, opportunities, and invoices)
+  gained a business-unit `<select>` filter scoping their stat rollups and
+  listings. Proposals and contracts are **not** scoped — they don't carry
+  `business_unit_id` — a real, honestly-documented limit of this pass
+  rather than a silent gap.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/multi_brand_scoping.sql`) proving a record can be
+  attributed to its own workspace's business unit, that attributing it to
+  another workspace's business unit is rejected (on both `INSERT` and
+  `UPDATE`) with the trigger's own error message rather than some
+  unrelated failure, and that clearing `business_unit_id` back to `null`
+  still works.
+- **This build reached `READY` on the first deploy.**
+- **Every item from Phase 8's original 5-item deferred list is now
+  complete**: template marketplace, mobile/voice-first refinements,
+  privacy-safe benchmarking, white-label workspace options, and
+  multi-brand/multi-business enhancements.
