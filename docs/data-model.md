@@ -7,20 +7,21 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, and the entire Settings section (Appendix A).** Every
-canonical route in the app is now built except Phase 8's explicitly deferred
-remainder (template marketplace, white-label workspaces, cross-tenant
-benchmarking, mobile/voice refinements, multi-brand enhancements). 176 tables
-are live in
+Library + Search, the entire Settings section (Appendix A), and the template
+marketplace (the first item of Phase 8's deferred remainder).** Every
+canonical route in the app is now built. 177 tables are live in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
 — 10.3 through 10.9 in full. Phase 8 is Section 18's ninth stage,
-"Productization, scale, and ecosystem expansion" — this pass adds subscription
-billing/entitlements, usage limits, and data export/deletion, deferring template
-marketplace, white-label workspaces, cross-tenant benchmarking, mobile/voice
-refinements, and multi-brand enhancements to explicit future requests (see the
-Phase 8 assumptions section for why). Migrations live in `supabase/migrations/`,
+"Productization, scale, and ecosystem expansion" — the initial pass added
+subscription billing/entitlements, usage limits, and data export/deletion,
+deferring template marketplace, white-label workspaces, cross-tenant
+benchmarking, mobile/voice refinements, and multi-brand enhancements to
+explicit future requests; the marketplace has since been built (see the Phase
+8 assumptions section and the template marketplace assumptions section below).
+White-label workspaces, cross-tenant benchmarking, mobile/voice refinements,
+and multi-brand enhancements remain deferred. Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
@@ -140,8 +141,25 @@ large-text overrides mirroring the theme cookie's pattern; Integrations
 and AI Policies are read-only indexes linking to their richer existing
 homes (`/operations/integrations`, `/ai/policies`), the same choice made
 for Library's SOPs/Agreements. See Assumptions below. **Every canonical
-route in the app is now built** except Phase 8's explicitly deferred
-remainder.
+route in the app is now built.**
+
+**Also built: the template marketplace, the first item of Phase 8's
+deferred remainder and the first feature in this build where content
+becomes readable across the workspace-isolation boundary every RLS policy
+since Phase 1 has assumed.** One new table, `template_marketplace_listings`
+(177th table). Two explicit user decisions were made before building,
+since this genuinely changes the security model: (1) self-serve snapshot
+publish/install — publishing copies a template's current version content
+into a listing, installing copies that snapshot into the installing
+workspace's own `templates`/`template_versions` as an independent row,
+never a live link back to the source workspace's actual data; (2) a
+`certified` column exists (matching the spec's "certified implementation
+pathways" language) but nothing can set it true, since this app has no
+platform-operator/superadmin role at all — every role is workspace-scoped.
+Lives inside the existing `/library/templates` page rather than a new
+top-level route, since Appendix A has no marketplace route. White-label
+workspaces, cross-tenant benchmarking, mobile/voice refinements, and
+multi-brand enhancements remain deferred. See Assumptions below.
 
 ## 10.1 Data Architecture Principles
 
@@ -1168,3 +1186,64 @@ they are not repeated in every row.
   is met, and confirming an archived-status insert is unaffected by the
   guard.
 - **This build reached `READY` on the first deploy.**
+
+## Assumptions Recorded in the Template Marketplace build
+
+- **Self-serve snapshot publish/install, confirmed with the user before
+  building** — the alternative (a platform-curated catalog only, no
+  workspace-to-workspace publishing) was explicitly offered and declined.
+  Publishing never exposes a workspace's live `templates`/
+  `template_versions` rows directly; it copies the current version's
+  `content`/`schema_json` into a new `template_marketplace_listings` row.
+  Installing likewise copies that listing's snapshot into the installing
+  workspace's own `templates`/`template_versions` as an independent row —
+  there is no foreign-key-enforced ongoing link between an installed
+  template and the listing it came from beyond `source_template_id`,
+  which is nullable and only ever used to trace provenance, not to keep
+  data in sync.
+- **`certified` exists as a column but nothing can set it true, confirmed
+  with the user before building.** The spec pairs "template marketplace"
+  with "certified implementation pathways," which implies an external
+  reviewer — this app has no platform-operator/superadmin role anywhere;
+  every role, including Workspace Owner, is scoped to one workspace. The
+  alternative (skip the column entirely) was explicitly offered and
+  declined, so the field matches the spec's language and is ready for a
+  future superadmin review workflow, honestly documented as unbuilt
+  rather than faked.
+- **The cross-tenant read is a second, additive RLS policy, not a
+  modification of the standard pattern** — `"publishers manage their own
+  listings"` is the exact workspace-membership `for all` policy used by
+  every tenant-owned table since Phase 1; `"authenticated users can
+  browse published listings"` is new and additive, scoped strictly to
+  `status = 'published'`. Postgres OR's permissive SELECT policies
+  together, so a publisher still sees their own drafts via the first
+  policy while everyone else sees only what's published via the second.
+- **`increment_marketplace_install_count` mirrors
+  `increment_usage_counter`'s exact self-validating `SECURITY DEFINER`
+  pattern** — a requesting workspace has no general `UPDATE` right on
+  another workspace's listing row, so the RPC itself re-checks
+  `status = 'published'` before writing, regardless of who calls it.
+- **Caught and fixed a self-introduced bug immediately, by the security
+  advisor rather than by inspection**: the new RPC was left callable by
+  `anon`/`public` by default (Postgres grants `EXECUTE` to `PUBLIC` on new
+  functions unless explicitly revoked) — the exact same class of finding
+  Phase 1's `handle_new_user()`/`log_audit_event()` and Phase 8's
+  `increment_usage_counter` had already each fixed once, and this one
+  slipped through only because the revoke step was omitted from the first
+  migration. Fixed via an immediate follow-up migration before anything
+  used the function.
+- **The UI lives inside the existing `/library/templates` page, not a new
+  top-level route** — Appendix A's canonical route tree has no dedicated
+  marketplace route, and the non-negotiable is to build canonical routes
+  from Appendix A, not invent new ones.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/template_marketplace.sql`) proving the actual
+  cross-tenant boundary, not just that RLS is enabled: a draft listing
+  stays invisible to another workspace, a published listing becomes
+  visible, a direct cross-tenant `UPDATE` still affects 0 rows even
+  though the row is readable, the install-count RPC succeeds on a
+  published listing from another workspace's `authenticated` context, and
+  the same RPC leaves a draft listing's count untouched even when called
+  directly.
+- **This build reached `READY` on the first deploy** (after the one
+  advisor-caught grants fix, applied before any deploy).

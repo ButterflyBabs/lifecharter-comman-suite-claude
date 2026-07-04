@@ -607,3 +607,57 @@ gaps:**
   or a future automation would populate them.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
+
+## Template Marketplace Test Status
+
+Built the first item of Phase 8's deferred remainder: a template
+marketplace, and this build's first deliberate exception to strict
+per-workspace RLS isolation (confirmed with the user before building,
+not a gap — see docs/permissions-and-rls.md).
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/template_marketplace.sql` — proves the actual
+  cross-tenant read boundary rather than just that RLS is enabled: a
+  workspace's draft listing is invisible to another workspace (0 rows),
+  the same workspace's published listing IS visible to another workspace
+  (1 row) — the first test in this project that expects and confirms a
+  successful cross-tenant read — a direct cross-tenant `UPDATE` on the
+  published listing still affects 0 rows even though it's readable, the
+  `increment_marketplace_install_count` RPC succeeds when called from the
+  other workspace's `authenticated` context and the count reflects it
+  afterward, and the same RPC leaves a draft listing's count at 0 even
+  when called directly against it.
+
+**This build reached `READY` on the first deploy.** One real bug was
+caught and fixed immediately by the security advisor, not by inspection
+or a failing test: `increment_marketplace_install_count` was left
+callable by the `anon` role by default (Postgres grants `EXECUTE` to
+`PUBLIC` on new functions unless explicitly revoked) — the same class of
+finding Phase 1's `handle_new_user()`/`log_audit_event()` and Phase 8's
+`increment_usage_counter` had each already fixed once, caught here within
+the same session via a routine post-migration `get_advisors` check and
+fixed via an immediate follow-up migration before anything used the
+function.
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/library/templates`
+  (now including the publish/unpublish/install marketplace controls) has
+  been verified at the SQL layer (schema, RLS, the new cross-tenant
+  policy, the install-count RPC) and the build/runtime layer (compiles,
+  the route resolves and correctly redirects an unauthenticated request
+  to `/login` with a 200), but publishing a real template, browsing the
+  marketplace, and installing a listing have never been exercised against
+  a real form submission.
+- **No certification workflow** — the `certified` column exists but
+  nothing in this build can set it true, since there is no
+  platform-operator/superadmin role anywhere in the app. Documented as an
+  explicit, confirmed-with-the-user deferral, not an oversight.
+- **4 of Phase 8's 5 deferred items remain**: white-label client
+  workspace options, benchmarking with privacy-safe aggregation, mobile
+  and voice-first refinements, and multi-brand/multi-business
+  enhancements beyond what `business_units` already provides.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).

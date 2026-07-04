@@ -206,6 +206,35 @@ assuming coverage. Verified with
 isolation on `business_units` (never directly tested before now) and the
 new limit trigger's blocking and unrestricted cases.
 
+**Also built: the template marketplace, adding one new table
+(`template_marketplace_listings`) and this build's first deliberate
+exception to strict per-workspace isolation.** Every RLS policy since
+Phase 1 has scoped tenant-owned tables to `workspace_id in (select
+private.active_workspace_ids())` with no exceptions — this table keeps
+that exact policy for management (`"publishers manage their own
+listings"`) and adds a second, additive, permissive policy
+(`"authenticated users can browse published listings"`) that lets any
+authenticated member of any workspace read rows where `status =
+'published'`, regardless of `source_workspace_id`. This is confirmed
+deliberate, not a gap: the user was asked explicitly whether marketplace
+content should be self-serve workspace-to-workspace publishing (chosen)
+or platform-curated only, precisely because it breaks the isolation
+pattern every other table in this schema depends on. Nothing a workspace
+hasn't explicitly published is ever exposed — drafts and retired listings
+stay covered only by the ownership policy. A new `SECURITY DEFINER` RPC,
+`increment_marketplace_install_count`, mirrors Phase 8's
+`increment_usage_counter` exactly: it self-validates `status =
+'published'` before writing, since a requesting workspace has no general
+`UPDATE` right on another workspace's listing row. The security advisor
+caught the RPC left callable by `anon`/`public` by default immediately
+after the first migration (the same class of finding Phase 1 and Phase 8
+each fixed once already) — corrected via an immediate follow-up migration
+before any deploy. Verified with `supabase/tests/template_marketplace.sql`,
+proving the actual boundary: a draft listing is invisible cross-tenant, a
+published one is visible, direct cross-tenant writes are still blocked
+even though the row is readable, and the install-count RPC only ever
+touches published listings.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |
