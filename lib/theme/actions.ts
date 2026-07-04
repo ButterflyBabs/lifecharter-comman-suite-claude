@@ -12,5 +12,8 @@ export async function setTheme(theme: "light" | "dark") {
 export async function getTheme(): Promise<"light" | "dark"> {
   const cookieStore = await cookies();
   const value = cookieStore.get("lc_theme")?.value;
-  return value === "dark" ? "dark" : "light";
+  // Dark is the brand board's primary presentation — default to it for a
+  // first-time visitor with no saved preference; "light" only applies once
+  // someone has explicitly toggled to it (and it's been saved as a cookie).
+  return value === "light" ? "light" : "dark";
 }
