@@ -22,8 +22,7 @@ function severityFor(avg: number): "strength" | "stable" | "needs_attention" | "
 // reusing the same gate mechanism verified in
 // supabase/tests/roadmap_gate_enforcement.sql.
 export async function generateRoadmapFromAudit(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   workspaceId: string,
   auditInstanceId: string,
   userId: string,

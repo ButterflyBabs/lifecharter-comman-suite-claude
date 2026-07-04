@@ -133,7 +133,7 @@ export default async function CommandTodayPage() {
         </div>
         <div className="rounded border border-soft-taupe/40 p-3 text-sm">
           <Link href="/reviews/daily" className="text-deep-indigo underline">
-            Open today's review
+            Open today&apos;s review
           </Link>
         </div>
       </section>
