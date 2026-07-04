@@ -123,6 +123,33 @@ gate's cases: blocked with no approval on file, blocked with only a rejected
 approval on file, and succeeding (through both `approved` and `executed`)
 once an approved record exists.
 
+**Phase 8 (subset A) adds 8 more RLS-enabled tables** (subscription billing,
+entitlements, usage tracking, and data governance). `subscription_plans`,
+`plan_prices`, and `plan_entitlements` are global reference data — read-only
+to authenticated users, the same pattern as Phase 2/6/7's reference tables —
+since plan definitions are platform-wide, not per-tenant. `workspace_subscriptions`
+grants **no authenticated INSERT/UPDATE at all**, the same precedent as the
+`workspaces` table itself: only the Stripe webhook handler and the checkout/
+portal server actions can write it, both via the service-role admin client
+after an app-layer `isWorkspaceAdmin()` check. `billing_webhook_events` has
+RLS enabled with **zero policies** — completely inaccessible to
+`authenticated`/`anon`, service-role only, the same "default deny" treatment
+already given to the revoked-`EXECUTE` `SECURITY DEFINER` trigger functions
+from Phase 1; this produces one expected `rls_enabled_no_policy` INFO-level
+advisor finding, accepted by design. `data_export_requests` is insertable by
+any active member; `data_deletion_requests` insert/update is admin-gated
+(`Workspace Owner`/`Administrator` only via `private.has_workspace_role()`),
+given how consequential a deletion request is. A new `SECURITY DEFINER` RPC,
+`increment_usage_counter()`, is the one sanctioned way to bump a
+`usage_counters` row (which itself has no authenticated write policy) —
+it self-enforces active membership in the target workspace before writing,
+the same discipline as every other `SECURITY DEFINER` function in this
+codebase. Verified with `supabase/tests/billing_rls.sql`, covering
+cross-tenant isolation, the global plan-data readability, the
+no-authenticated-write restriction on `workspace_subscriptions` (even for
+the Workspace Owner), and the open-vs-admin-gated insert distinction between
+`data_export_requests` and `data_deletion_requests`.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

@@ -5,13 +5,17 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 7: the full Section 18 build order is complete.** 167 tables
-are live in `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero
-new security-advisor findings. This is the complete canonical object model —
-10.3, 10.4, 10.5, 10.6, 10.7, 10.8, and 10.9 in full — spanning Tenancy and
-Governance, Roadmap/Audit/Work/Command, Business Architecture, Revenue and
-Relationship, Client Experience and Success, Operations/Finance/Risk/Integration,
-and Reviews/AI/Notification/Library. Migrations live in `supabase/migrations/`,
+**Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
+complete, plus a prioritized first slice of Phase 8.** 175 tables are live in
+`itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
+security-advisor findings beyond one expected, by-design INFO finding (see
+Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
+— 10.3 through 10.9 in full. Phase 8 is Section 18's ninth stage,
+"Productization, scale, and ecosystem expansion" — this pass adds subscription
+billing/entitlements, usage limits, and data export/deletion, deferring template
+marketplace, white-label workspaces, cross-tenant benchmarking, mobile/voice
+refinements, and multi-brand enhancements to explicit future requests (see the
+Phase 8 assumptions section for why). Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
@@ -74,6 +78,21 @@ full AI Team object set):
 
 Nothing remains unbuilt from Section 10's canonical object model. Every table
 named across 10.3 through 10.9 exists in `itxfgxmdyqpcytmgdysa` as of Phase 7.
+
+Built in Phase 8, subset A (8 tables — subscription billing/entitlements, usage
+tracking, and data governance; not part of Section 10's numbered object model,
+since Phase 8 is a later, additive product stage rather than one of the
+original 10.3-10.9 modules):
+`subscription_plans`, `plan_prices`, `plan_entitlements`, `workspace_subscriptions`,
+`usage_counters`, `billing_webhook_events`, `data_export_requests`,
+`data_deletion_requests`.
+
+Not yet built from Phase 8's full requirement list: template marketplace,
+certified implementation pathways, white-label client workspace options,
+privacy-safe benchmarking, mobile/voice-first refinements, and multi-brand/
+multi-business enhancements beyond what `business_units` (Phase 1) already
+provides — deferred to explicit future requests per the user's own scoping
+decision (see Assumptions Recorded in Phase 8 below).
 
 ## 10.1 Data Architecture Principles
 
@@ -772,3 +791,140 @@ they are not repeated in every row.
   but no one has clicked through the actual UI with a real workspace,
   including the agent-seeding action and the full record → approve →
   execute workflow.
+
+## Assumptions Recorded in Phase 8
+
+- **Phase 8 is a much broader stage than any prior phase** (nine distinct
+  initiatives: billing/entitlements, guided activation, usage limits,
+  multi-brand enhancements, template marketplace, white-label workspaces,
+  benchmarking, mobile/voice, and data governance/enterprise admin) — the
+  user was asked explicitly whether to attempt the whole phase at once or
+  prioritize a subset, and chose to prioritize billing/entitlements, guided
+  activation, usage limits, and data export/deletion first. Template
+  marketplace, white-label domains, cross-tenant benchmarking, mobile/voice
+  refinements, and multi-brand enhancements are deferred to explicit future
+  requests, not built or scaffolded at all in this pass — each is either
+  the first genuinely cross-tenant-visible feature this codebase would need
+  (marketplace, benchmarking, both of which break the "every table is
+  strictly workspace-isolated" pattern every RLS policy since Phase 1 has
+  assumed) or needs infrastructure outside this session (custom domain
+  provisioning for white-label).
+- **Real Stripe subscription billing, in test mode, by explicit user
+  decision** — the user was asked whether billing should be governance
+  scaffolding only (like Phase 7's AI layer) or real Stripe integration,
+  and chose real integration. A second question then surfaced that the
+  Stripe MCP tool available in this session is bound to the connected
+  account's *live* secret key (its read calls only ever return
+  `livemode: true` objects, including the user's actual pre-existing
+  coaching-business products) — since a live key cannot see or create
+  test-mode data, this tool cannot be used to create the plan Prices. The
+  user chose to create the three test-mode Prices themselves in the
+  Stripe dashboard and hand back the price IDs, keeping all live-vs-test
+  key handling on their side. `plan_prices.stripe_price_id` starts `null`
+  for all three plans and is filled in once those IDs are provided — until
+  then, `/settings/billing`'s Subscribe buttons are disabled with a
+  "Price not configured yet" label rather than attempting a broken
+  checkout.
+- **`subscription_plans`/`plan_prices`/`plan_entitlements` are global
+  reference data** (no `workspace_id`, read-only to authenticated users),
+  the same pattern as Phase 2's `business_command_domains` and Phase 6's
+  `integration_providers` — plan definitions are platform-wide, not
+  per-tenant content. Seeded with three tiers (solo/team/enterprise) and
+  reasonable default entitlement limits (seats, business units, AI runs
+  per month, enabled automations) as a starting assumption; real pricing
+  amounts are whatever the user sets when creating the actual Stripe
+  Prices, not guessed at here.
+- **`workspace_subscriptions` grants no authenticated INSERT/UPDATE** — the
+  same precedent as the `workspaces` table itself (Phase 1/2): RLS only
+  allows `SELECT` for active members, since the only two writers are the
+  Stripe webhook handler and the checkout/portal server actions, both of
+  which use the service-role admin client after an explicit
+  `isWorkspaceAdmin()` check in application code (the app-layer mirror of
+  `private.has_workspace_role()`, added to `lib/data/workspace.ts` since
+  server actions run under the regular RLS-scoped client, not the
+  SECURITY DEFINER path SQL policies use).
+- **`billing_webhook_events` has RLS enabled but deliberately zero
+  policies** — completely inaccessible to `authenticated`/`anon`, the same
+  "default deny, service-role only" treatment as the revoked-`EXECUTE`
+  `SECURITY DEFINER` trigger functions from Phase 1. This produces one
+  expected `rls_enabled_no_policy` INFO-level security-advisor finding,
+  accepted by design (documented in the migration, not a gap).
+  `unique(stripe_event_id)` is the idempotency guard, the same pattern as
+  Phase 6's `webhook_events` table but scoped to Stripe's single
+  account-wide event stream rather than a per-workspace
+  `integration_account`.
+- **Caught and fixed a self-introduced bug before it shipped**: the
+  original `workspace_subscriptions.status` check constraint only allowed
+  a subset of Stripe's real `Subscription.status` enum
+  (`incomplete`/`incomplete_expired`/`unpaid`/`paused` were missing) —
+  would have made the webhook handler's upsert fail and be recorded as a
+  failed `billing_webhook_event` the first time Stripe sent one of those
+  statuses. Fixed via a follow-up migration widening the constraint before
+  any real webhook could hit it, the same "self-introduced bug caught
+  during this phase" pattern as Phase 4's `revenue_forecasts` default fix.
+- **Caught and fixed a second self-introduced bug before it shipped**: an
+  early version of the data-export action computed the full export bundle
+  and then discarded it, marking the request `completed` while pointing at
+  an `assets` row with a `null storage_path` — this build has no file
+  storage bucket configured, so the "export" would have produced nothing
+  retrievable. Fixed by adding `data_export_requests.export_data jsonb` and
+  serving it directly through an authenticated `/api/data-export/[id]`
+  route instead of pretending to use the file-based assets model.
+- **Two concrete usage-limit enforcement points, chosen because their UI
+  and triggers already exist** — Phase 6's `enforce_automation_enable_gate`
+  trigger was extended to also check the workspace's
+  `automations_enabled` plan entitlement (only when the workspace has an
+  active/trialing subscription with a non-null limit; no subscription or
+  an unlimited/enterprise entitlement is not restricted), and Phase 7's
+  `/ai/runs` "record AI work for review" action now checks and increments
+  a monthly `ai_runs_per_month` usage counter via a new
+  `increment_usage_counter()` `SECURITY DEFINER` RPC (needed because
+  `usage_counters` itself grants no authenticated write — the same
+  self-enforcing-membership-check discipline as every other `SECURITY
+  DEFINER` function in this codebase). Seats and business-unit limits are
+  **not** enforced yet — `/settings/users` and `/settings/business-units`
+  are still unbuilt Phase-0 placeholders with no creation flow to hook a
+  limit into, unlike automations and AI runs, whose UI already existed
+  before this phase.
+- **Data deletion is request/schedule/cancel only, not an automated
+  executor** — `data_deletion_requests` supports a 30-day scheduled,
+  cancellable deletion request (admin-gated insert, matching the
+  `workspaces`-bootstrap admin-only precedent), but actually purging a
+  workspace on its scheduled date needs a recurring job (Supabase pg_cron
+  or a Vercel cron hitting a server action) that doesn't exist in this
+  build — deferred rather than guessed at, the same "defer what needs
+  infrastructure this build doesn't have yet" pattern as every prior
+  phase's underspecified-automation deferrals.
+- **Guided activation is a soft gate, not a hard paywall** — Command
+  Center shows a banner linking to `/settings/billing` when a workspace has
+  no active/trialing/past-due subscription, but no middleware or per-page
+  check blocks access to the rest of the app. A wide-reaching hard gate
+  across dozens of already-built pages from six prior phases was judged
+  too high-regression-risk to add opportunistically inside this phase;
+  "new workspaces can activate without developer intervention" is
+  satisfied by the self-serve checkout/portal flow itself, which needs no
+  hard gate to be true.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/billing_rls.sql`) covering cross-tenant isolation on
+  `workspace_subscriptions`/`usage_counters`/`data_export_requests`/
+  `data_deletion_requests`, global readability of the seeded plan
+  reference data, the "no authenticated write" restriction on
+  `workspace_subscriptions` (even for the Workspace Owner), the
+  open-to-all-members insert policy on `data_export_requests` versus the
+  admin-only insert policy on `data_deletion_requests`, and confirming
+  `billing_webhook_events` is completely unreadable to the authenticated
+  role.
+- **This phase's build reached `READY` on the first deploy** — including
+  installing the new `stripe` npm dependency for the first time in this
+  project (no lockfile is committed, so Vercel's `npm install` picked it
+  up automatically) and a correct guess at the Stripe API version string
+  matching the installed SDK version, verified rather than assumed once
+  the build log confirmed no type error.
+- **No live Stripe environment configured yet, and no browser testing** —
+  `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are not yet set in
+  Vercel, the Stripe webhook endpoint is not yet registered in the Stripe
+  dashboard, and the three plan Prices' `stripe_price_id` values are still
+  `null` pending the user creating them. Until all three are done, the
+  billing flow cannot be exercised end-to-end even in test mode — flagged
+  honestly rather than checked off, on top of every prior phase's
+  carried-forward no-real-browser-walkthrough gap.

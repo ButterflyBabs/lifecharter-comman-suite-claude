@@ -419,3 +419,72 @@ database instead of trusting the unreliable hidden field.
   decision, not an oversight.
 - **No automated CI** for the SQL tests (same gap as every prior phase — still
   run manually).
+
+## Phase 8 Test Status (subset A)
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/billing_rls.sql` — proves cross-tenant isolation on
+  `workspace_subscriptions`/`usage_counters`/`data_export_requests`/
+  `data_deletion_requests` (tenant B gets 0 rows querying any of tenant A's
+  billing/data-governance records directly), confirms the seeded plan
+  reference data (3 plans, 12 entitlements) stays globally readable, proves
+  no authenticated role — not even the Workspace Owner — can write
+  `workspace_subscriptions` directly (0 rows affected, since there is no
+  UPDATE policy at all), confirms `billing_webhook_events` is completely
+  unreadable to the authenticated role, and confirms the open-to-all-members
+  insert policy on `data_export_requests` versus the admin-only insert
+  policy on `data_deletion_requests` (a plain member's deletion-request
+  insert attempt raises the expected RLS violation).
+
+**This phase's build reached `READY` on the first deploy** — including
+installing the new `stripe` npm dependency for the first time in this
+project and a correct first guess at the Stripe API version string
+matching the installed SDK version.
+
+Two real bugs were caught and fixed before they shipped, both by
+self-review rather than by a compile error or a failing test:
+
+1. An early version of the data-export action computed the full export
+   bundle and then discarded it, marking the request `completed` while
+   pointing at an `assets` row with a `null storage_path` — this build has
+   no file-storage bucket configured, so nothing would have actually been
+   retrievable. Fixed by storing the bundle inline as `jsonb` and serving
+   it through an authenticated `/api/data-export/[id]` route instead.
+2. The original `workspace_subscriptions.status` check constraint only
+   covered a subset of Stripe's real `Subscription.status` enum — missing
+   `incomplete_expired`, `unpaid`, and `paused` — which would have made the
+   webhook handler's upsert fail (and be recorded as a failed
+   `billing_webhook_event`) the first time Stripe sent one of those
+   statuses. Fixed via a follow-up migration widening the constraint before
+   any real webhook could hit it.
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 8 flow
+  (billing plan comparison and subscribe, customer portal hand-off, data
+  export and download, data deletion request/cancel, the guided-activation
+  banner) has been verified at the SQL layer (schema, RLS) and the
+  build/runtime layer (compiles, both spot-checked routes resolve and
+  correctly redirect unauthenticated requests to `/login`), but never
+  clicked through by a human or driven by browser automation.
+- **No live Stripe environment configured yet.** `STRIPE_SECRET_KEY` and
+  `STRIPE_WEBHOOK_SECRET` are not set in Vercel, no webhook endpoint is
+  registered in the Stripe dashboard pointing at `/api/stripe/webhook`, and
+  all three plans' `stripe_price_id` values are still `null` pending the
+  user creating the test-mode Prices themselves (the connected Stripe MCP
+  tool is bound to the account's live secret key and cannot create
+  test-mode objects). The full checkout → webhook → subscription-active
+  flow has not been exercised end-to-end even once.
+- **Seat and business-unit plan limits are not enforced** — only the two
+  entitlements whose UI/trigger already existed before this phase
+  (`automations_enabled` via Phase 6's gate, `ai_runs_per_month` via Phase
+  7's run-recording action) have a real enforcement point; `/settings/users`
+  and `/settings/business-units` remain unbuilt Phase-0 placeholders with
+  no creation flow to hook a seat or business-unit limit into yet.
+- **Data deletion has no automated executor** — requests can be scheduled
+  and canceled, but nothing actually purges a workspace on its scheduled
+  date; that needs a recurring job (pg_cron or a Vercel cron) this build
+  doesn't have.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
