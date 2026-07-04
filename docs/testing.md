@@ -907,3 +907,65 @@ gaps:**
   `internal_notes` to any direct API call bypassing the view.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
+
+## Notification Generators Test Status
+
+Wired real notification generation for Section 14.4's 13 named trigger
+types: `notification_preferences` has been fully built since the Settings
+completion phase, but nothing ever inserted a `notifications` row for any
+of them until now. One periodic sweep
+(`private.run_notification_sweep()`, `pg_cron` every 15 minutes — the
+extension was not previously installed in this project) covers all 13,
+rather than a mix of per-table triggers for the genuinely event-driven
+ones and a sweep for the genuinely time-based ones.
+
+**This phase needed one same-day build-fix**, caught by actually running
+the test, not by inspection: `notifications.severity`'s check constraint
+only allows `info`/`warning`/`critical`, not `'error'` — six of the
+thirteen conditions used `'error'` in the first pass. Fixed in
+`supabase/migrations/20260718020000_fix_notification_severity.sql`.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/notification_generators.sql` — proves a user's explicit
+  in_app opt-out for a trigger type is respected even though the
+  condition matches (an overdue task owned by them), that a
+  workspace-wide condition (a failed payment, which has no specific
+  owner) fans out to every workspace admin and *only* admins (not a
+  plain member), that running the sweep twice in a row doesn't duplicate
+  an already-unread notification, and that marking a notification read
+  lets a fresh one through on the next sweep for the same still-failed
+  payment.
+
+**This build reached `READY` on the first deploy** (the migrations
+applied cleanly; the one real bug was in a value never exercised until
+the test ran, not in anything Vercel's build would catch, since this
+phase touched no application code at all — pure database migrations).
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **The test covers 2 of 13 conditions plus the shared logic every
+  condition relies on** — `task_overdue` and `payment_failed_or_overdue`
+  are exercised directly with real matching data; the other 11
+  conditions' `WHERE` clauses are reviewed but not individually run
+  against seeded data proving they match and fire correctly. Every
+  condition funnels through the same verified
+  `private.create_notification_if_enabled()` (preference check + dedup +
+  insert), so the shared correctness is tested, but each condition's own
+  query logic is a lower-confidence "reviewed, not proven" for the
+  remaining 11.
+- **The 15-minute `pg_cron` schedule has not been observed firing in
+  production** — the sweep function itself was called directly and
+  proven correct; whether the actual scheduled job fires reliably every
+  15 minutes in the live database hasn't been watched over time.
+- **The exact thresholds chosen for time-based conditions are reasonable
+  defaults, not values confirmed with the user** (24 hours for
+  `decision_due`, 3 days for `lead_no_next_action`, 14 days for
+  `stage_aging_exceeded`, 120% for `capacity_threshold_exceeded`) — worth
+  revisiting if they prove too noisy or too quiet once real workspaces
+  accumulate data.
+- **No real browser/user test** that a generated notification actually
+  renders correctly wherever `notifications` is surfaced in the UI today.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).

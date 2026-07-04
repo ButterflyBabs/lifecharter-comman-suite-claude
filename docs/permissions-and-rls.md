@@ -360,6 +360,20 @@ another workspace, and — the check that actually justifies the
 security-definer views — receiving zero rows when querying the base
 `sessions`/`workspaces` tables directly.
 
+**Also built: real notification generation, adding no new RLS surface at
+all.** `private.run_notification_sweep()` (scheduled via `pg_cron`, newly
+enabled in this project) is `SECURITY DEFINER` and reads across every
+tenant's `decisions`/`tasks`/`approvals`/etc. directly — but it never runs
+as a request-scoped role reachable by any user; it's a scheduled job
+callable only by the database owner, with `EXECUTE` revoked from
+`anon`/`authenticated`/`public` on every function it uses
+(`create_notification_if_enabled()`, `workspace_admin_user_ids()`, and
+the sweep itself). The `notifications` rows it inserts are read
+afterward through whatever existing RLS already governs that table — no
+policy changed. `workspace_admin_user_ids()` is a read-only helper (not a
+policy) used only inside the sweep to resolve a fallback recipient for
+conditions with no specific per-record owner.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

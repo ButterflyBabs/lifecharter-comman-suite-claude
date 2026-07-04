@@ -1628,3 +1628,85 @@ they are not repeated in every row.
   login-to-dashboard flow (verified at the SQL layer and via HTTP
   redirect behavior only); no way for a client to mark anything complete
   from their side; client health status isn't shown at all.
+
+**Also built: real notification generation for Section 14.4's 13 named
+trigger types.** `notification_preferences` has been fully built since the
+Settings completion phase, but nothing ever inserted a row into
+`notifications` for any of the 13 — a known, honestly-flagged gap. Rather
+than a mix of per-table triggers for the types that are genuinely
+event-driven and a separate mechanism for the ones that are genuinely
+time-based, one periodic sweep (`private.run_notification_sweep()`,
+scheduled via `pg_cron` every 15 minutes — the extension was not
+previously installed in this project and is enabled by this migration)
+covers all 13. Delivery is in_app only: no email/SMS provider is
+integrated, so those two channels in `notification_preferences` remain
+configured but undelivered. `private.create_notification_if_enabled()` is
+the shared insert path, gating on the recipient's own preference
+(defaulting to enabled, matching Settings' stated default) and deduping
+against any already-unread notification for the same type+subject.
+`private.workspace_admin_user_ids()` is the fallback recipient set for
+conditions with no specific owner column (failed payments, overdue
+invoices, disconnected integrations, capacity overruns). See Assumptions
+below.
+
+## Assumptions Recorded in the Notification Generators build
+
+- **One periodic sweep for all 13 trigger types, not a mix of triggers
+  and a sweep** — `approval_requested`, `automation_failed`,
+  `integration_disconnected`, `data_conflict_review`, and `client_at_risk`
+  could each be a pure insert/update trigger, but most of the 13
+  (`decision_due`, `task_overdue`, `stage_aging_exceeded`, `review_due`,
+  `capacity_threshold_exceeded`, `lead_no_next_action`) are inherently
+  time-based — "due" or "aging" is a function of the current moment, not
+  a row event, and no trigger fires just because time passed. One
+  mechanism for all 13 is simpler to reason about, test, and extend than
+  two different ones, at the cost of "immediate" cadence really meaning
+  "within one 15-minute sweep interval."
+- **`pg_cron` was not previously installed in this project** — enabled via
+  `create extension if not exists pg_cron` in the same migration that
+  defines the job, the same "defer what needs infrastructure this build
+  doesn't have yet, until it's explicitly requested" pattern finally
+  resolved (Phase 8's data-deletion assumptions already named `pg_cron` as
+  the intended mechanism for a scheduled executor).
+- **Delivery is in_app only** — `notification_preferences` also models
+  `email`/`sms` channels, but this build integrates no email or SMS
+  provider, so a user who only enabled the `email` channel for a trigger
+  type gets nothing at all right now; only the `in_app` channel's
+  preference is checked before inserting into `notifications`.
+- **Dedup is against unread notifications, not permanent** — marking a
+  notification read lets a still-ongoing condition generate a fresh one
+  on the next sweep, rather than a still-overdue task silently going
+  unnoticed forever after the first alert.
+- **Reasonable, undocumented-in-spec thresholds were chosen for the
+  purely time-based conditions**, since Section 14.4 names the trigger
+  types but not exact thresholds: decisions due within 24 hours or
+  already overdue; leads idle 3+ days with no next action; opportunities
+  in the same stage 14+ days; capacity at 120%+ of planned hours. These
+  are reasonable defaults, not values confirmed with the user — worth
+  revisiting if they prove too noisy or too quiet in practice.
+- **A real bug was caught by running the SQL test, not by inspection**:
+  `notifications.severity`'s check constraint only allows
+  `info`/`warning`/`critical`, not `'error'` — six of the thirteen
+  conditions used `'error'` in the first pass. Fixed in a same-day
+  follow-up migration
+  (`20260718020000_fix_notification_severity.sql`), the same
+  apply-then-immediately-fix pattern as the marketplace/benchmarking
+  build-fix iterations.
+- **Verified with a real SQL test**
+  (`supabase/tests/notification_generators.sql`) proving an explicit
+  opt-out is respected, a workspace-wide condition (a failed payment)
+  fans out to every admin and only admins (not a plain member), repeated
+  sweeps don't duplicate an unread notification, and marking one read
+  lets a fresh one through on the next sweep. Not exhaustive across all
+  13 conditions — a representative subset (`task_overdue`,
+  `payment_failed_or_overdue`) plus the shared dedup/preference/fan-out
+  logic every condition relies on.
+- **Honestly not done yet**: the other 11 conditions' exact query logic
+  is reviewed but not individually exercised by a test (each reuses the
+  same verified `private.create_notification_if_enabled()` path, but the
+  specific `WHERE` clause per condition is unverified against real
+  matching data); no real browser/user test that a generated notification
+  actually appears correctly in whatever UI surfaces `notifications`
+  today; the 15-minute cadence itself hasn't been observed running live
+  in production since deploying this requires waiting for `pg_cron` to
+  fire on its own schedule.
