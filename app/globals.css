@@ -65,7 +65,7 @@ body {
 .lc-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: 22px;
   box-shadow: var(--card-shadow);
   transition:
     border-color 0.2s ease,
@@ -83,20 +83,13 @@ body {
 
 /* Section grouping (Section 4 brand board: give repeated h2 + grid blocks a
    visible anchor instead of floating text directly on the page background,
-   which read as sparse/empty at a glance). */
+   which read as sparse/empty at a glance) — each heading pairs with an
+   IconBadge in JSX so every section is identifiable by shape, not just a
+   line of text. */
 .lc-section-heading {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.lc-section-heading::before {
-  content: "";
-  width: 4px;
-  height: 18px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--warm-gold), var(--sacred-teal));
-  flex-shrink: 0;
 }
 
 .lc-icon-badge {
@@ -105,10 +98,31 @@ body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(212, 175, 99, 0.14);
   color: var(--warm-gold);
   flex-shrink: 0;
+}
+
+.lc-icon-badge-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.lc-icon-badge-success {
+  background: rgba(76, 175, 80, 0.14);
+  color: var(--success);
+}
+
+.lc-icon-badge-warning {
+  background: rgba(255, 152, 0, 0.14);
+  color: var(--warning);
+}
+
+.lc-icon-badge-error {
+  background: rgba(231, 76, 60, 0.14);
+  color: var(--error);
 }
 
 .lc-title {

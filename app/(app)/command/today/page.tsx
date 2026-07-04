@@ -2,7 +2,23 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { getMode } from "@/lib/mode/actions";
-import { Card, PageHeader, StatTile } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  IconBadge,
+  IconCompass,
+  IconClipboard,
+  IconCheckCircle,
+  IconHelpCircle,
+  IconUsers,
+  IconReceipt,
+  IconCreditCard,
+  IconMap,
+  IconGauge,
+  IconFlag,
+  IconClock,
+} from "@/components/ui";
 
 // Section 16.4 (Responsive requirements) names an explicit mobile priority
 // order: current priority, today's work, decisions and approvals, client
@@ -157,12 +173,14 @@ export default async function CommandTodayPage() {
       />
 
       {/* 1. Current priority */}
-      <Card
-        className="mt-4 border-l-4 text-sm"
-        style={{ borderLeftColor: oldestBlocker ? "var(--error)" : mostOverdueTask ? "var(--warning)" : "var(--card-border)" }}
-      >
-        <p className="text-xs font-semibold uppercase tracking-wide text-soft-taupe">Current priority</p>
-        <p className="mt-1 text-base font-medium">{currentPriority}</p>
+      <Card className="mt-4 flex items-center gap-4 text-sm">
+        <IconBadge tone={oldestBlocker ? "error" : mostOverdueTask ? "warning" : "neutral"}>
+          {oldestBlocker ? <IconFlag /> : mostOverdueTask ? <IconClipboard /> : <IconCompass />}
+        </IconBadge>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-soft-taupe">Current priority</p>
+          <p className="mt-1 text-base font-medium">{currentPriority}</p>
+        </div>
       </Card>
 
       {needsActivation && (
@@ -175,7 +193,10 @@ export default async function CommandTodayPage() {
       {/* 2. Today's work */}
       {mode === "run" && (
         <section className="mt-6">
-          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Due today or overdue</h2>
+          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+            <IconBadge size="sm"><IconClipboard /></IconBadge>
+            Due today or overdue
+          </h2>
           {overdueTasks && overdueTasks.length > 0 ? (
             <ul className="mt-2 space-y-2">
               {overdueTasks.map((t) => (
@@ -192,7 +213,10 @@ export default async function CommandTodayPage() {
 
       {mode === "build" && activePhase && (
         <section className="mt-6">
-          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Active roadmap phase: {activePhase.name}</h2>
+          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+            <IconBadge size="sm"><IconMap /></IconBadge>
+            Active roadmap phase: {activePhase.name}
+          </h2>
           <ul className="mt-2 space-y-2">
             {(activePhase.roadmap_milestones as unknown as { id: string; title: string; status: string }[])?.map((m) => (
               <li key={m.id}>
@@ -207,70 +231,119 @@ export default async function CommandTodayPage() {
 
       {/* 3. Decisions and approvals */}
       <section className="mt-6">
-        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Decisions and approvals</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconCheckCircle /></IconBadge>
+          Decisions and approvals
+        </h2>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link href="/decisions">
-            <StatTile value={openDecisions ?? 0} label="Open decisions" tone={(openDecisions ?? 0) > 0 ? "warning" : "neutral"} />
+            <StatTile
+              value={openDecisions ?? 0}
+              label="Open decisions"
+              tone={(openDecisions ?? 0) > 0 ? "warning" : "neutral"}
+              icon={<IconHelpCircle />}
+            />
           </Link>
           <Link href="/approvals">
-            <StatTile value={pendingApprovals ?? 0} label="Pending approvals" tone={(pendingApprovals ?? 0) > 0 ? "warning" : "neutral"} />
+            <StatTile
+              value={pendingApprovals ?? 0}
+              label="Pending approvals"
+              tone={(pendingApprovals ?? 0) > 0 ? "warning" : "neutral"}
+              icon={<IconCheckCircle />}
+            />
           </Link>
         </div>
       </section>
 
       {/* 4. Client and revenue alerts */}
       <section className="mt-6">
-        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Client and revenue alerts</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconUsers /></IconBadge>
+          Client and revenue alerts
+        </h2>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Link href="/clients/health">
-            <StatTile value={atRiskClientCount} label="Clients at risk" tone={atRiskClientCount > 0 ? "error" : "neutral"} />
+            <StatTile
+              value={atRiskClientCount}
+              label="Clients at risk"
+              tone={atRiskClientCount > 0 ? "error" : "neutral"}
+              icon={<IconUsers />}
+            />
           </Link>
           <Link href="/revenue/payments">
-            <StatTile value={overdueInvoices ?? 0} label="Overdue invoices" tone={(overdueInvoices ?? 0) > 0 ? "error" : "neutral"} />
+            <StatTile
+              value={overdueInvoices ?? 0}
+              label="Overdue invoices"
+              tone={(overdueInvoices ?? 0) > 0 ? "error" : "neutral"}
+              icon={<IconReceipt />}
+            />
           </Link>
           <Link href="/revenue/payments">
-            <StatTile value={failedPayments ?? 0} label="Failed payments" tone={(failedPayments ?? 0) > 0 ? "error" : "neutral"} />
+            <StatTile
+              value={failedPayments ?? 0}
+              label="Failed payments"
+              tone={(failedPayments ?? 0) > 0 ? "error" : "neutral"}
+              icon={<IconCreditCard />}
+            />
           </Link>
         </div>
       </section>
 
       {/* 5. Roadmap progress */}
       <section className="mt-6">
-        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Roadmap progress</h2>
-        <Card className="mt-3 text-sm">
-          {activePhase ? (
-            <p>
-              Active phase: <span className="font-medium">{activePhase.name}</span>
-            </p>
-          ) : (
-            <p className="text-soft-taupe">No active roadmap phase.</p>
-          )}
-          <Link href="/roadmap/plan" className="mt-1 inline-block text-sm underline">
-            View full roadmap
-          </Link>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconMap /></IconBadge>
+          Roadmap progress
+        </h2>
+        <Card className="mt-3 flex items-center gap-4 text-sm">
+          <IconBadge><IconMap /></IconBadge>
+          <div>
+            {activePhase ? (
+              <p>
+                Active phase: <span className="font-medium">{activePhase.name}</span>
+              </p>
+            ) : (
+              <p className="text-soft-taupe">No active roadmap phase.</p>
+            )}
+            <Link href="/roadmap/plan" className="mt-1 inline-block text-sm underline">
+              View full roadmap
+            </Link>
+          </div>
         </Card>
       </section>
 
       {/* 6. Capacity */}
       <section className="mt-6">
-        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Capacity</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconGauge /></IconBadge>
+          Capacity
+        </h2>
         <div className="mt-3">
           <Link href="/operations/capacity">
-            <StatTile value={capacityLabel} label="Actual vs. planned hours logged" />
+            <StatTile value={capacityLabel} label="Actual vs. planned hours logged" icon={<IconGauge />} />
           </Link>
         </div>
       </section>
 
       {/* 7. Secondary metrics and history */}
       <details className="mt-8">
-        <summary className="cursor-pointer text-sm text-deep-indigo underline">Secondary metrics and history</summary>
+        <summary className="flex cursor-pointer items-center gap-2 text-sm text-deep-indigo underline">
+          <IconBadge size="sm"><IconClock /></IconBadge>
+          Secondary metrics and history
+        </summary>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatTile value={blockers?.length ?? 0} label="Active blockers" tone={(blockers?.length ?? 0) > 0 ? "error" : "neutral"} />
-          <div className="lc-card flex items-center p-4 text-sm">
+          <StatTile
+            value={blockers?.length ?? 0}
+            label="Active blockers"
+            tone={(blockers?.length ?? 0) > 0 ? "error" : "neutral"}
+            icon={<IconFlag />}
+          />
+          <Card hover className="flex items-center gap-3 text-sm">
+            <IconBadge><IconClock /></IconBadge>
             <Link href="/reviews/daily" className="text-deep-indigo underline">
               Open today&apos;s review
             </Link>
-          </div>
+          </Card>
         </div>
       </details>
     </div>
