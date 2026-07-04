@@ -374,6 +374,22 @@ policy changed. `workspace_admin_user_ids()` is a read-only helper (not a
 policy) used only inside the sweep to resolve a fallback recipient for
 conditions with no specific per-record owner.
 
+**Also built: the scheduled data-deletion executor — the one place in
+this build where an internal job legitimately bypasses every tenant
+boundary at once, by design.** `private.run_data_deletion_executor()` is
+`SECURITY DEFINER`, callable only by the database owner (same
+`anon`/`authenticated`/`public` revoke pattern as the notification
+sweep), and its entire job is to permanently delete a workspace and
+everything under it once that workspace's own admin explicitly requested
+it and the 30-day window elapsed — the request itself was already
+admin-gated at insert time by the pre-existing
+`owners and admins can request workspace deletion` policy. No table's RLS
+policy changed. `deletion_execution_log` has RLS enabled with zero
+policies, the same "service-role only, not reachable via the API by
+anyone" shape as `billing_webhook_events` — nothing about a workspace
+that no longer exists should be readable by any workspace member (there
+is no workspace left to be a member of) or by a portal user.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

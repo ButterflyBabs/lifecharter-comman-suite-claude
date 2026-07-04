@@ -1710,3 +1710,73 @@ below.
   today; the 15-minute cadence itself hasn't been observed running live
   in production since deploying this requires waiting for `pg_cron` to
   fire on its own schedule.
+
+**Also built: the scheduled data-deletion executor, closing Phase 8's own
+documented gap** ("data deletion is request/schedule/cancel only, not an
+automated executor"). One new table, `deletion_execution_log` (no new
+tenant-scoped table — this one deliberately carries no foreign key to
+`workspaces` at all, since it must survive the very deletion it records).
+`private.run_data_deletion_executor()` runs daily via `pg_cron`, finds
+`data_deletion_requests` due today or overdue and not canceled, and
+deletes the workspace — every foreign key in this schema referencing
+`workspaces(id)` is `ON DELETE CASCADE` except `billing_webhook_events`
+(`ON DELETE SET NULL`, a deliberate Phase 8 exception so billing audit
+rows outlive the workspace), so deleting the `workspaces` row purges
+everything else. `data_deletion_requests.workspace_id` is *also* cascade,
+meaning the request row that authorized the deletion disappears along
+with the workspace — `deletion_execution_log` is the surviving permanent
+record. See Assumptions below.
+
+## Assumptions Recorded in the Data-Deletion Executor build
+
+- **`deletion_execution_log` deliberately has no foreign key to
+  `workspaces`** — every other tenant-scoped table in this schema
+  includes `workspace_id` as an FK precisely so RLS can enforce isolation
+  through it, but this table's entire purpose is to outlive the
+  workspace it describes. `workspace_id` here is a plain, unconstrained
+  column, not a join key to anything that still exists after the delete
+  runs.
+- **A real, previously-latent bug was caught by the test, not by
+  inspection: no workspace hard-delete had ever actually been exercised
+  in this project before.** Every RLS test since Phase 1 wraps its
+  workspace inserts in `begin`/`rollback` and never really deletes one.
+  The Phase 1 audit triggers (`audit_workspace_members`,
+  `audit_member_roles`) fire during the cascade and try to `INSERT` a new
+  `audit_events` row referencing the `workspace_id` that is disappearing
+  in the very same statement — `audit_events.workspace_id` being `ON
+  DELETE CASCADE` only protects *existing* rows for that workspace, not a
+  brand-new insert racing the parent's own deletion. This made every
+  workspace delete fail with a foreign-key violation, regardless of
+  `pg_cron` — a gap that existed since Phase 1 and simply had never been
+  reached until this build's test tried to actually delete something.
+  Fixed in a same-day follow-up migration
+  (`20260719020000_fix_data_deletion_audit_trigger_conflict.sql`) by
+  disabling just those two triggers for the duration of each workspace's
+  delete, re-enabling immediately after in both the success and failure
+  paths so other workspaces' ongoing audit logging during the same sweep
+  is unaffected. Losing the final audit_events rows for a workspace that
+  no longer exists at all is an accepted, deliberate tradeoff —
+  `deletion_execution_log` is the record that matters once the workspace
+  is gone.
+- **Once daily (3am UTC), not the notification sweep's 15-minute
+  cadence** — a request scheduled 30 days out has no reason to be
+  checked as frequently as an in-app alert.
+- **Each workspace's deletion is independently wrapped in its own
+  `begin`/`exception` block inside the loop** — one workspace failing to
+  delete (an unanticipated FK, a lock, anything) must not block every
+  other scheduled deletion in the same run.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/data_deletion_executor.sql`) proving a request due
+  today executes (the workspace and a child row are both actually gone,
+  not just the top-level row, and `deletion_execution_log` records it),
+  that a future-scheduled request and a canceled request are both left
+  completely untouched, and that running the executor twice doesn't
+  duplicate the log entry. This test is always run inside
+  `begin`/`rollback` and must never be invoked any other way — the
+  function it tests is genuinely destructive.
+- **Honestly not done yet**: the daily cron schedule itself hasn't been
+  observed firing in production over time (the function was proven
+  correct directly; whether the scheduled job reliably fires once a day
+  going forward hasn't been watched); no real workspace owner has
+  exercised the actual request-then-wait-30-days-then-verify-it's-gone
+  flow end to end.

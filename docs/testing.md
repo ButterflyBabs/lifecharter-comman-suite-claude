@@ -969,3 +969,57 @@ gaps:**
   renders correctly wherever `notifications` is surfaced in the UI today.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
+
+## Data Deletion Executor Test Status
+
+Built the scheduled executor closing Phase 8's own documented gap: "data
+deletion is request/schedule/cancel only, not an automated executor."
+`private.run_data_deletion_executor()` runs daily via `pg_cron` and
+deletes a workspace once its own deletion request is due and not
+canceled.
+
+**This phase needed one same-day build-fix, and it was a genuinely
+significant find**: no workspace hard-delete had ever actually been run
+in this project before this test — every RLS test since Phase 1 wraps
+its inserts in `begin`/`rollback` and never really deletes a workspace.
+The first real attempt immediately failed: the Phase 1 audit triggers on
+`workspace_members`/`member_roles` fire during the cascade and try to
+insert a new `audit_events` row referencing the workspace_id that's
+disappearing in the same statement, which always violates a foreign key
+— a latent bug that had existed since Phase 1 and simply had never been
+reached. Fixed in
+`supabase/migrations/20260719020000_fix_data_deletion_audit_trigger_conflict.sql`
+by disabling those two specific triggers for the duration of each
+workspace's delete.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/data_deletion_executor.sql` — proves a request
+  scheduled for today (or overdue) actually executes: the workspace row
+  and a genuine child row (`workspace_members`) are both gone (not just
+  the top-level table), the original request row cascaded away with it,
+  and `deletion_execution_log` recorded the deletion with the workspace's
+  captured name/slug. Proves a future-scheduled request and a canceled
+  request (even one whose `scheduled_for` was today) are both left
+  completely untouched. Proves running the executor twice doesn't
+  duplicate the log entry. This test — like the function it exercises —
+  is destructive by design and is always run inside `begin`/`rollback`;
+  it must never be invoked any other way.
+
+**This build reached `READY`** (database migrations only; no application
+code changed, so there was no Vercel build to verify — the one real bug
+was caught by the SQL test, not by anything a TypeScript/Next.js build
+would surface).
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **The daily cron schedule hasn't been observed firing in production
+  over time** — the function itself was proven correct by direct
+  invocation inside a rolled-back transaction; whether the scheduled job
+  reliably fires once a day going forward hasn't been watched.
+- **No real workspace owner has exercised the actual
+  request-then-wait-30-days-then-verify-it's-gone flow end to end** —
+  only the executor's own logic, run against synthetic data.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
