@@ -17,14 +17,26 @@ export default async function SessionsPage() {
 
   const supabase = await createClient();
 
+  // Reads through sessions_for_role, not the base sessions table: the
+  // view nulls agenda/internal_notes/preparation_brief for anyone whose
+  // role lacks session_note.read.internal (e.g. Finance), enforced in
+  // the database rather than trusted to this page. It has no FK metadata
+  // for PostgREST to embed clients(organizations(name)) through, so the
+  // org name is looked up from the existing clients query below instead.
   const [{ data: sessions }, { data: clients }] = await Promise.all([
     supabase
-      .from("sessions")
-      .select("id, session_type, scheduled_at, completed_at, status, agenda, internal_notes, client_summary, client_summary_status, clients(organizations(name))")
+      .from("sessions_for_role")
+      .select("id, client_id, session_type, scheduled_at, completed_at, status, agenda, internal_notes, client_summary, client_summary_status")
       .eq("workspace_id", workspaceId)
       .order("scheduled_at", { ascending: false }),
     supabase.from("clients").select("id, organizations(name)").eq("workspace_id", workspaceId),
   ]);
+
+  const orgNameByClientId = new Map<string, string>();
+  for (const c of clients ?? []) {
+    const orgName = (c.organizations as unknown as { name: string } | null)?.name;
+    if (orgName) orgNameByClientId.set(c.id, orgName);
+  }
 
   return (
     <div className="p-8">
@@ -36,7 +48,7 @@ export default async function SessionsPage() {
       {sessions && sessions.length > 0 ? (
         <ul className="mt-6 space-y-3">
           {sessions.map((s) => {
-            const orgName = (s.clients as unknown as { organizations: { name: string } | null } | null)?.organizations?.name ?? "Untitled client";
+            const orgName = orgNameByClientId.get(s.client_id) ?? "Untitled client";
             return (
               <li key={s.id}>
                 <Card className="text-sm">

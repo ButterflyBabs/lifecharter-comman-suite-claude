@@ -435,8 +435,7 @@ Scopes should include: `own`, `assigned`, `team`, `business unit`, `workspace`,
 The `roles`, `permissions`, `role_permissions`, and `member_roles` tables exist and
 are seeded (15 system roles — the union of Section 4's and this section's slightly
 different lists, see the assumptions below — and an 18-permission starter catalog
-scoped to what Phase 1 actually built). But **no RLS policy queries
-`role_permissions` at request time yet.** Phase 1's actual enforcement is two-tier:
+scoped to what Phase 1 actually built). Phase 1's actual enforcement was two-tier:
 
 1. **Workspace membership** (`status = 'active'` in `workspace_members`) gates
    almost everything — the non-negotiable, and what the isolation test proves.
@@ -444,14 +443,43 @@ scoped to what Phase 1 actually built). But **no RLS policy queries
    gate the handful of admin-only operations that exist so far: updating a
    workspace, managing business units/roles/membership, reading `audit_events`.
 
-This means every non-admin role (Marketing, Salesperson, Coach, etc.) currently has
-*identical* data access within a workspace — the fine-grained `resource.action.scope`
-model this section describes is a real, populated catalog, not yet a live decision
-path. Building RLS policies that actually consult `role_permissions` per-request is
-appropriate once real per-role UI exists to configure it (a workspace owner needs to
-*see* what "Marketing can access X" means before that boundary should be enforced) —
-targeted for the phase that first needs it (likely Phase 4, when Marketing/Sales/
-Finance roles start seeing genuinely different data).
+At the time, no RLS policy queried `role_permissions` at request time, so every
+non-admin role (Marketing, Salesperson, Coach, etc.) had *identical* data access
+within a workspace — the fine-grained `resource.action.scope` model this section
+describes was a real, populated catalog, not a live decision path.
+
+**Update, once Revenue Engine/Client Experience/Operations made per-role data
+actually differ and `/settings/roles` gave a workspace owner real per-role UI to
+see it:** `private.has_permission(workspace_id, permission_code)` now consults
+`role_permissions` directly, and two concrete Section 11.3 scenarios are enforced
+by it:
+
+- **`payment.reconcile.workspace`** — a trigger on `payments` blocks any change to
+  `reconciliation_status` unless the caller holds this permission. Granted to
+  Workspace Owner, Administrator, and Finance; nobody else, including Marketing.
+- **`session_note.read.internal`** — a new view, `public.sessions_for_role`, nulls
+  `agenda`/`preparation_brief`/`internal_notes` for callers without this permission
+  (the base `sessions` table and its RLS are untouched — masking only happens
+  through the view, the same column-level-security technique this schema already
+  used for `client_portal_sessions`). Granted to Workspace Owner, Administrator,
+  Coach or Delivery Team, Executive or Leadership, and Client Success; not Finance,
+  Marketing, or the rest.
+
+Both are proven with a real, transaction-wrapped test
+(`supabase/tests/fine_grained_permissions.sql`): Marketing attempting to reconcile a
+payment gets a real Postgres exception, not a silently-ignored update; Finance
+reading `sessions_for_role` gets nulled note columns while reading the same row from
+the base `sessions` table still returns the real values, proving the view — not a
+new base-table policy — is what changed.
+
+**Still true, honestly:** this is two concrete resources, not a blanket retrofit.
+"Sales cannot change workspace permissions" was already enforced by the named-role
+checks above, independent of this engine. "Delivery cannot read private sales
+notes" (`opportunities`' discovery-detail columns) has no enforcement yet because
+no page in this app currently reads those columns at all — there's nothing to
+retrofit until a UI surfaces them, the same reasoning Phase 1 originally used to
+defer this whole feature. Every other table's access is still governed purely by
+workspace membership and named-role checks, unchanged by this build.
 
 ## 11.3 Row Level Security Requirements
 

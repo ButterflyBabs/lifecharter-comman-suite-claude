@@ -1048,3 +1048,46 @@ gaps:**
   only the executor's own logic, run against synthetic data.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
+
+## Fine-Grained Permissions Test Status
+
+Built `private.has_permission()` and real enforcement on the two Section 11.3
+example scenarios with a live UI surface: payment reconciliation
+(`payment.reconcile.workspace`) and coaching-note visibility
+(`session_note.read.internal`, enforced via a new `sessions_for_role` view — see
+[permissions-and-rls.md](permissions-and-rls.md#phase-1-enforcement-honestly) and
+[data-model.md](data-model.md#assumptions-recorded-in-the-fine-grained-permissions-build)
+for the full reasoning).
+
+One real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/fine_grained_permissions.sql` — proves a Marketing-role member's
+  attempt to reconcile a payment raises a real Postgres exception (not a silently
+  no-op'd update) while a Finance-role member's identical update succeeds; proves a
+  Finance-role member reads `null` for `agenda`/`preparation_brief`/`internal_notes`
+  through `sessions_for_role` while a Coach-role member reads the real values
+  through the same view; and proves the base `sessions` table still returns real
+  values regardless of role, confirming the masking is additive (a new view) rather
+  than a change to Phase 5's existing table policy.
+
+**This build reached `READY`** (migrations plus two page/action changes —
+`/revenue/payments` gained a permission-gated "Mark reconciled" action,
+`/clients/sessions` now reads through `sessions_for_role`).
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **This is two concrete resources, not a blanket retrofit** — every other table in
+  this schema is still governed purely by workspace membership and named-role
+  checks. "Delivery cannot read private sales notes" (Section 11.3's other named
+  example) has no enforcement because no page currently reads `opportunities`'
+  discovery-detail columns at all; there's nothing to retrofit until a UI surfaces
+  them.
+- **Writing session notes isn't gated, only reading them** — a Finance-role member
+  can still write `sessions.internal_notes` via the base table's existing
+  workspace-membership UPDATE policy, unchanged by this build. Section 11.3's
+  example is about visibility, not write access, so this wasn't addressed here.
+- **No real browser/user test** that the "Mark reconciled" button actually appears
+  only for permitted roles and behaves correctly end to end in a live session.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still run
+  manually, though the automated workflow from the CI build above does cover this
+  new test file too, being a glob over `supabase/tests/*.sql`).

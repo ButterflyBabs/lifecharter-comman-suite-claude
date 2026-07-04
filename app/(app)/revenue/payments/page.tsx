@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
-import { createOrder, recordPayment, requestRefund } from "./actions";
+import { createOrder, recordPayment, requestRefund, reconcilePayment } from "./actions";
 
-export default async function PaymentsPage() {
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
@@ -17,13 +22,14 @@ export default async function PaymentsPage() {
 
   const supabase = await createClient();
 
-  const [{ data: orders }, { data: opportunities }] = await Promise.all([
+  const [{ data: orders }, { data: opportunities }, { data: canReconcile }] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, total, currency, status, opportunities(name), invoices(id, invoice_number, amount_due, status, payments(id, amount, status))")
+      .select("id, total, currency, status, opportunities(name), invoices(id, invoice_number, amount_due, status, payments(id, amount, status, reconciliation_status))")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
     supabase.from("opportunities").select("id, name").eq("workspace_id", workspaceId).eq("status", "open"),
+    supabase.rpc("current_user_has_permission", { p_workspace_id: workspaceId, p_permission_code: "payment.reconcile.workspace" }),
   ]);
 
   return (
@@ -33,10 +39,16 @@ export default async function PaymentsPage() {
         description="Track orders, invoices, deposits, installments, failures, refunds, and reconciliation."
       />
 
+      {error && (
+        <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {decodeURIComponent(error)}
+        </p>
+      )}
+
       {orders && orders.length > 0 && (
         <ul className="mt-6 space-y-3">
           {orders.map((o) => {
-            const invoices = (o.invoices as unknown as { id: string; invoice_number: string; amount_due: number; status: string; payments: { id: string; amount: number; status: string }[] }[]) ?? [];
+            const invoices = (o.invoices as unknown as { id: string; invoice_number: string; amount_due: number; status: string; payments: { id: string; amount: number; status: string; reconciliation_status: string }[] }[]) ?? [];
             return (
               <li key={o.id}>
                 <Card className="text-sm">
@@ -56,13 +68,19 @@ export default async function PaymentsPage() {
                       </div>
                       {inv.payments?.map((p) => (
                         <p key={p.id} className="text-xs text-soft-taupe">
-                          Payment {p.amount} · {p.status}
+                          Payment {p.amount} · {p.status} · {p.reconciliation_status}
                           {p.status === "succeeded" && (
                             <form action={requestRefund} className="mt-1 inline-flex items-center gap-1">
                               <input type="hidden" name="payment_id" value={p.id} />
                               <input type="hidden" name="amount" value={p.amount} />
                               <input type="text" name="reason" placeholder="Refund reason" className="rounded border border-soft-taupe px-1 py-0.5 text-xs" />
                               <button type="submit" className="lc-btn-secondary text-xs">Request refund</button>
+                            </form>
+                          )}
+                          {p.status === "succeeded" && p.reconciliation_status !== "reconciled" && canReconcile && (
+                            <form action={reconcilePayment} className="mt-1 inline-flex">
+                              <input type="hidden" name="payment_id" value={p.id} />
+                              <button type="submit" className="lc-btn-secondary text-xs">Mark reconciled</button>
                             </form>
                           )}
                         </p>

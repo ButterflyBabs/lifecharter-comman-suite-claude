@@ -1798,3 +1798,47 @@ record. See Assumptions below.
   workflow proves migrations replay cleanly from zero and that every SQL
   test still passes; it doesn't check RLS-policy correctness beyond what
   the tests already assert.
+
+## Assumptions Recorded in the Fine-Grained Permissions build
+
+- **Column-level masking needs a view; RLS itself can't do it** —
+  `sessions_for_role` uses the same `security_invoker = false` technique
+  as `client_portal_sessions`/`client_portal_branding`, `CASE`-masking
+  `agenda`/`preparation_brief`/`internal_notes` to `null` per row based
+  on `private.has_permission(...)` rather than omitting the columns
+  outright, since callers with the permission still need real values
+  from the very same query. Because default view semantics bypass the
+  base table's RLS entirely, the workspace-membership check
+  (`workspace_id in (select private.active_workspace_ids())`) had to be
+  re-stated in the view itself — it isn't inherited from `sessions`.
+- **The base `sessions` table is deliberately untouched** — its own RLS
+  policy (workspace membership only, from Phase 5) still returns every
+  column to every active member. `sessions_for_role` is an additive,
+  narrower read path that exactly one page (`/clients/sessions`) was
+  switched to use; nothing else in the app changed. A determined query
+  against the base table still bypasses the masking — closing that
+  gap would mean retrofitting the base table's own SELECT policy, which
+  risks breaking every other page that already reads full session rows
+  and was judged out of scope for this pass.
+- **`payment.reconcile.workspace` is enforced by a trigger, not a
+  policy** — Postgres RLS `WITH CHECK` can't compare a single changed
+  column against its prior value across an arbitrary row shape as
+  cleanly as a `BEFORE UPDATE` trigger can (`new.reconciliation_status
+  is distinct from old.reconciliation_status`), and a trigger holds
+  regardless of role, including a service-role script that forgot to
+  check the permission itself.
+- **`private.has_permission()` is additive, not a replacement for
+  `private.has_workspace_role()`** — the two coexist. Named-role checks
+  still gate roles/permissions/membership management (Section 11.3's
+  "Sales cannot change workspace permissions" bullet was already true
+  before this build and wasn't touched).
+- **Scope stayed narrow on purpose**: only the two Section 11.3 example
+  scenarios with a live, currently-shipped UI surface got real
+  enforcement. "Delivery cannot read private sales notes" has no UI
+  surface today (no page reads `opportunities`' discovery-detail
+  columns), so no permission or view was added for it — an unused
+  enforcement point would be exactly the "reviewed, not proven" gap this
+  session already caught once this week
+  ([notification_generators.sql](../supabase/tests/notification_generators.sql)).
+  Every other table in this schema is still governed purely by
+  workspace membership and named-role checks, unchanged by this build.

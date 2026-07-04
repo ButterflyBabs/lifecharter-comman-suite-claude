@@ -78,6 +78,37 @@ export async function recordPayment(formData: FormData) {
   revalidatePath("/revenue/payments");
 }
 
+export async function reconcilePayment(formData: FormData) {
+  const workspaceId = await getCurrentWorkspaceId();
+  if (!workspaceId) redirect("/roadmap/setup");
+
+  const paymentId = formData.get("payment_id") as string;
+  const supabase = await createClient();
+
+  // The DB trigger (enforce_payment_reconcile_permission) is the real
+  // backstop regardless of what this check does; checking here first
+  // just turns a raw Postgres exception into a normal redirect+message.
+  const { data: allowed } = await supabase.rpc("current_user_has_permission", {
+    p_workspace_id: workspaceId,
+    p_permission_code: "payment.reconcile.workspace",
+  });
+
+  if (!allowed) {
+    redirect("/revenue/payments?error=You%20do%20not%20have%20permission%20to%20reconcile%20payments");
+  }
+
+  const { error } = await supabase
+    .from("payments")
+    .update({ reconciliation_status: "reconciled" })
+    .eq("id", paymentId);
+
+  if (error) {
+    redirect(`/revenue/payments?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/revenue/payments");
+}
+
 export async function requestRefund(formData: FormData) {
   const workspaceId = await getCurrentWorkspaceId();
   if (!workspaceId) redirect("/roadmap/setup");
