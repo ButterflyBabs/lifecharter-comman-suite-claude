@@ -150,6 +150,25 @@ no-authenticated-write restriction on `workspace_subscriptions` (even for
 the Workspace Owner), and the open-vs-admin-gated insert distinction between
 `data_export_requests` and `data_deletion_requests`.
 
+**Also, alongside Phase 8: `/settings/users` adds a real invite flow and one
+new trigger, `enforce_seat_limit`**, on `workspace_members` — the first
+Section 5 Settings placeholder actually built out. It mirrors
+`enforce_automation_enable_gate`'s pattern exactly: an insert or update
+setting a member to `invited`/`active` status is blocked with a Postgres
+exception once the workspace's active/trialing subscription has a
+non-null `seats` entitlement limit already met; no subscription or an
+unlimited (enterprise) entitlement is unrestricted. This closes the "seats
+are not enforced yet" gap Phase 8 itself documented. No new RLS policy was
+needed on `workspace_members` — Phase 1's existing "owners and admins can
+manage membership" policy already grants Workspace Owner/Administrator
+direct write access, so the invite server action uses the service-role
+admin client for exactly one call (`auth.admin.inviteUserByEmail()`, which
+has no authenticated equivalent) and the regular RLS-scoped client for
+everything else. Verified with
+`supabase/tests/settings_users_seat_limit.sql`, covering both the blocking
+and unrestricted cases, and confirming the RLS policy (not the admin
+client) is what lets a Workspace Owner write directly.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

@@ -476,15 +476,60 @@ self-review rather than by a compile error or a failing test:
   tool is bound to the account's live secret key and cannot create
   test-mode objects). The full checkout → webhook → subscription-active
   flow has not been exercised end-to-end even once.
-- **Seat and business-unit plan limits are not enforced** — only the two
-  entitlements whose UI/trigger already existed before this phase
-  (`automations_enabled` via Phase 6's gate, `ai_runs_per_month` via Phase
-  7's run-recording action) have a real enforcement point; `/settings/users`
-  and `/settings/business-units` remain unbuilt Phase-0 placeholders with
-  no creation flow to hook a seat or business-unit limit into yet.
+- **Business-unit plan limits are not enforced** — `/settings/business-units`
+  remains an unbuilt Phase-0 placeholder with no creation flow to hook a
+  limit into yet. (Seat limits are now enforced — see the Settings/Users
+  Test Status section below.)
 - **Data deletion has no automated executor** — requests can be scheduled
   and canceled, but nothing actually purges a workspace on its scheduled
   date; that needs a recurring job (pg_cron or a Vercel cron) this build
   doesn't have.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## Settings/Users Test Status
+
+Built alongside Phase 8: `/settings/users`, the first of the never-built
+Section 5 Settings placeholders to actually be built out (real invite
+flow, role assignment, access review, suspend/reactivate/remove), plus a
+new `enforce_seat_limit` trigger closing Phase 8's own documented "seats
+not enforced" gap.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/settings_users_seat_limit.sql` — proves adding members
+  is unrestricted with no subscription on file; proves both an
+  `active`-status and an `invited`-status insert are blocked once a
+  solo-plan seat limit (1) is already met, each via the exact expected
+  exception message rather than any error; confirms a Workspace Owner can
+  set `access_review_at` directly through RLS with no admin client
+  involved (1 row affected); and confirms a plain member cannot change
+  another member's status (0 rows affected).
+
+**This build reached `READY` on the first deploy.** One real bug was
+caught and fixed before it shipped, by the test itself throwing an actual
+exception rather than by inspection: the first version of
+`enforce_seat_limit` fired on every `UPDATE` to an invited/active member,
+not just the transition into that state, so a harmless `access_review_at`
+update incorrectly tripped the seat-limit block. Fixed by adding the same
+`tg_op = 'INSERT' or old.status not in (...)` transition guard
+`enforce_automation_enable_gate` (Phase 6/8) already had.
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/settings/users` has
+  been verified at the SQL layer (schema, RLS, the seat-limit trigger) and
+  the build/runtime layer (compiles, the route resolves and correctly
+  redirects an unauthenticated request to `/login` with a 200), but the
+  invite/role/access-review/suspend forms have never been exercised
+  against a real form submission, and no real invite email has been sent
+  end-to-end.
+- **Business-unit limits are still unenforced** — no creation flow exists
+  yet on `/settings/business-units` to hook a limit into.
+- **`/settings/roles`, `/settings/workspace`, `/settings/notifications`,
+  `/settings/accessibility`, `/settings/integrations`,
+  `/settings/business-units`, all of `/library/*`, and `/search` remain
+  unbuilt Phase-0 placeholders.**
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).

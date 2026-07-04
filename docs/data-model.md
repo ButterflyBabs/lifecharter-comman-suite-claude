@@ -94,6 +94,16 @@ multi-business enhancements beyond what `business_units` (Phase 1) already
 provides — deferred to explicit future requests per the user's own scoping
 decision (see Assumptions Recorded in Phase 8 below).
 
+**Also built, alongside Phase 8: `/settings/users`** — the first of the
+never-built Section 5/10.3 Settings placeholders to actually be built out,
+adding a real invite flow and closing Phase 8's own "seats are not enforced
+yet" gap. No new tables; `workspace_members` gains two columns
+(`access_review_at`, `invited_email`) and a new `enforce_seat_limit` trigger
+(see Assumptions below). `/settings/roles`, `/settings/workspace`,
+`/settings/notifications`, `/settings/accessibility`,
+`/settings/integrations`, `/settings/business-units`, all of `/library/*`,
+and `/search` remain unbuilt Phase-0 placeholders.
+
 ## 10.1 Data Architecture Principles
 
 - Every tenant-owned record must include `workspace_id`.
@@ -928,3 +938,47 @@ they are not repeated in every row.
   billing flow cannot be exercised end-to-end even in test mode — flagged
   honestly rather than checked off, on top of every prior phase's
   carried-forward no-real-browser-walkthrough gap.
+
+## Assumptions Recorded in Settings/Users
+
+- **`workspace_members` gains `access_review_at` (date) and `invited_email`
+  (text)** — Section 6's fuller field list for Users and Roles names an
+  access-review date beyond 10.3's minimum fields, and `invited_email`
+  captures the address at invite time since a freshly-invited member has no
+  `user_profiles` row yet to display a name from.
+- **`enforce_seat_limit` closes Phase 8's own documented gap** ("seats and
+  business-unit limits are not enforced yet") by mirroring
+  `enforce_automation_enable_gate`'s exact pattern: a real trigger on
+  `workspace_members`, checked against `plan_entitlements`
+  (`entitlement_key = 'seats'`) only when the workspace has an
+  active/trialing subscription with a non-null limit — no subscription or
+  an unlimited/enterprise entitlement is unrestricted. Business-unit limits
+  remain unenforced; `/settings/business-units` is still an unbuilt
+  placeholder with no creation flow to hook a limit into.
+- **Caught and fixed a self-introduced bug before it shipped, the same
+  "transition guard" family as Phase 6/8's automation gate**: the first
+  version of `enforce_seat_limit` fired on every `UPDATE` to an
+  invited/active member, not just the transition into that state — a plain
+  `access_review_at` update on an already-active member incorrectly tripped
+  the seat-limit block. Fixed by adding
+  `tg_op = 'INSERT' or old.status not in ('invited', 'active')`, the exact
+  guard `enforce_automation_enable_gate` already had. Caught by the real
+  test transaction throwing an actual exception, not by inspection.
+- **The invite flow uses the service-role admin client for exactly one
+  call** — `auth.admin.inviteUserByEmail()`, since creating a brand-new
+  `auth.users` row for someone with no account yet has no authenticated
+  equivalent (the same "no authenticated equivalent exists" exception as
+  the setup wizard's workspace bootstrap in Phase 2). Every write after
+  that — `workspace_members`, `member_roles`, `audit_events` — goes through
+  the regular RLS-scoped client, because Phase 1's existing "owners and
+  admins can manage membership" policy already grants Workspace Owner/
+  Administrator direct write access to `workspace_members`; verified by
+  reading that exact policy's SQL rather than assuming the admin client was
+  needed for the whole flow.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/settings_users_seat_limit.sql`) covering: unrestricted
+  inserts with no subscription; both an `active`-status and an
+  `invited`-status insert blocked once a solo-plan seat limit is reached;
+  a Workspace Owner setting `access_review_at` directly via RLS with no
+  admin client; and a plain member unable to change another member's
+  status (0 rows affected).
