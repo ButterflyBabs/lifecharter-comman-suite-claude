@@ -186,6 +186,26 @@ workspace-scoped and RLS is the backstop either way. Verified with
 `knowledge_entries` (the one new table) and the new
 `templates.template_type` check constraint.
 
+**Also built: the remaining 7 `/settings/*` routes, completing Appendix
+A's entire Settings section — no new tables, one new trigger.**
+`enforce_business_unit_limit` mirrors `enforce_seat_limit` exactly,
+blocking a `business_units` row from becoming `active` once the
+workspace's plan `business_units` entitlement limit is met, closing the
+last of the two seat/business-unit enforcement gaps Phase 8 originally
+documented. Every RLS policy this build's server actions rely on already
+existed from Phase 1 — `business_units` ("owners and admins can manage
+business units"), `roles`/`role_permissions` ("owners and admins can
+manage workspace roles"/"...role permissions", scoped so only
+`workspace_id is not null` custom roles are writable, never the shared
+system roles), `notification_preferences` (user manages their own via
+`user_id = auth.uid()`), and `user_profiles` (same). No admin client is
+used anywhere in this build; every write goes through the regular
+RLS-scoped client, verified by reading the exact policy SQL rather than
+assuming coverage. Verified with
+`supabase/tests/settings_business_unit_limit.sql`, covering cross-tenant
+isolation on `business_units` (never directly tested before now) and the
+new limit trigger's blocking and unrestricted cases.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

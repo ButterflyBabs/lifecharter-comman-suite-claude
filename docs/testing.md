@@ -476,10 +476,6 @@ self-review rather than by a compile error or a failing test:
   tool is bound to the account's live secret key and cannot create
   test-mode objects). The full checkout → webhook → subscription-active
   flow has not been exercised end-to-end even once.
-- **Business-unit plan limits are not enforced** — `/settings/business-units`
-  remains an unbuilt Phase-0 placeholder with no creation flow to hook a
-  limit into yet. (Seat limits are now enforced — see the Settings/Users
-  Test Status section below.)
 - **Data deletion has no automated executor** — requests can be scheduled
   and canceled, but nothing actually purges a workspace on its scheduled
   date; that needs a recurring job (pg_cron or a Vercel cron) this build
@@ -525,14 +521,9 @@ gaps:**
   invite/role/access-review/suspend forms have never been exercised
   against a real form submission, and no real invite email has been sent
   end-to-end.
-- **Business-unit limits are still unenforced** — no creation flow exists
-  yet on `/settings/business-units` to hook a limit into.
-- **`/settings/roles`, `/settings/workspace`, `/settings/notifications`,
-  `/settings/accessibility`, and `/settings/integrations` remain unbuilt
-  Phase-0 placeholders.** (`/library/*` and `/search` are now built — see
-  the Library/Search Test Status section below.)
 - **No automated CI** for the SQL tests (same gap as every prior phase —
-  still run manually).
+  still run manually). (Business-unit limits and the rest of Settings are
+  now built too — see the Settings Completion Test Status section below.)
 
 ## Library/Search Test Status
 
@@ -574,5 +565,45 @@ gaps:**
 - **Search is a representative cross-section (8 object types), not a
   full-text index across all 176 tables** — it does not exclude archived
   items and has no relevance ranking beyond grouping by type.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## Settings Completion Test Status
+
+Built the remaining 7 `/settings/*` routes (workspace, business-units,
+roles, integrations, notifications, accessibility, ai-policies),
+completing Appendix A's entire Settings section — every canonical route
+in the app is now built except Phase 8's explicitly deferred remainder.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/settings_business_unit_limit.sql` — proves cross-tenant
+  isolation on `business_units` (never directly tested before now that
+  real UI writes to it: tenant A gets 0 rows querying tenant B's business
+  units directly), proves adding business units is unrestricted with no
+  subscription on file, proves a second `active`-status business unit is
+  blocked once a solo-plan limit (1) is already met via the exact
+  expected exception message, and confirms an `archived`-status insert is
+  unaffected by the guard (only active-status transitions are gated).
+
+**This build reached `READY` on the first deploy.**
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** All 7 routes have been
+  verified at the SQL layer (schema, RLS, the new limit trigger) and the
+  build/runtime layer (compiles; `/settings/workspace`,
+  `/settings/business-units`, and `/settings/roles` all resolve and
+  correctly redirect an unauthenticated request to `/login` with a 200),
+  but none of the create/edit/delete forms — business unit CRUD, role
+  creation and permission-checkbox toggling, notification preference
+  saves, or the accessibility overrides actually changing rendered
+  output — have been exercised against a real form submission.
+- **Notification preferences have no generator behind most trigger
+  types yet** — Section 14.4's 13 named triggers (decision due, approval
+  requested, etc.) are all configurable, but nothing in this build
+  actually inserts a `notifications` row for most of them; only a human
+  or a future automation would populate them.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).

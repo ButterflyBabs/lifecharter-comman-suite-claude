@@ -6,8 +6,12 @@ source of truth for schema design; no table should be created that isn't listed 
 (or a documented, approved addition to it).
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
-complete, plus a prioritized first slice of Phase 8, `/settings/users`, and the
-Knowledge and Asset Library + Search.** 176 tables are live in
+complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
+Library + Search, and the entire Settings section (Appendix A).** Every
+canonical route in the app is now built except Phase 8's explicitly deferred
+remainder (template marketplace, white-label workspaces, cross-tenant
+benchmarking, mobile/voice refinements, multi-brand enhancements). 176 tables
+are live in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
@@ -100,10 +104,7 @@ never-built Section 5/10.3 Settings placeholders to actually be built out,
 adding a real invite flow and closing Phase 8's own "seats are not enforced
 yet" gap. No new tables; `workspace_members` gains two columns
 (`access_review_at`, `invited_email`) and a new `enforce_seat_limit` trigger
-(see Assumptions below). `/settings/roles`, `/settings/workspace`,
-`/settings/notifications`, `/settings/accessibility`,
-`/settings/integrations`, and `/settings/business-units` remain unbuilt
-Phase-0 placeholders.
+(see Assumptions below). (The rest of Settings is now built too — see below.)
 
 **Also built: the Knowledge and Asset Library (all 11 `/library/*` routes)
 and `/search`** — the last unbuilt canonical route section from Appendix A.
@@ -121,6 +122,26 @@ existing `assets`/`asset_versions`/`tags` tables (Phase 1), scoped by
 their richer existing homes (`/operations/sops`, `/operations/legal-risk`,
 `/revenue/contracts`) rather than a second store for the same data. See
 Assumptions below.
+
+**Also built: the remaining 7 `/settings/*` routes, completing the entire
+Settings section of Appendix A.** No new tables — everything needed
+(`workspaces`, `business_units`, `roles`/`permissions`/`role_permissions`,
+`notification_preferences`, `user_profiles.accessibility_preferences`)
+already existed from Phase 1, just without a UI. One new trigger,
+`enforce_business_unit_limit`, mirrors `enforce_seat_limit` exactly and
+closes the "business-unit limits are not enforced" gap Phase 8 and
+Settings/Users both documented. Business Units gets full CRUD (its first
+UI ever); Roles and Permissions finally gives the seeded 15-system-role/
+18-permission/170-role_permissions catalog a real interface, with
+workspace-custom roles editable and system roles read-only; Notifications
+is personal `notification_preferences` CRUD across Section 14.4's 13 named
+trigger types; Accessibility adds manual reduce-motion/high-contrast/
+large-text overrides mirroring the theme cookie's pattern; Integrations
+and AI Policies are read-only indexes linking to their richer existing
+homes (`/operations/integrations`, `/ai/policies`), the same choice made
+for Library's SOPs/Agreements. See Assumptions below. **Every canonical
+route in the app is now built** except Phase 8's explicitly deferred
+remainder.
 
 ## 10.1 Data Architecture Principles
 
@@ -1085,4 +1106,65 @@ they are not repeated in every row.
   out-of-list value while accepting a valid one. Assets, asset_versions,
   folders, tags, and templates already had their RLS proven by Phase 1's
   isolation test — not repeated here, only what's new.
+- **This build reached `READY` on the first deploy.**
+
+## Assumptions Recorded in the Settings completion build
+
+- **`enforce_business_unit_limit` mirrors `enforce_seat_limit` exactly**
+  (itself mirroring Phase 6/8's `enforce_automation_enable_gate`) —
+  blocks a `business_units` row from becoming `active` once the
+  workspace's active/trialing subscription has a non-null
+  `business_units` entitlement limit already met. No subscription or an
+  unlimited (enterprise) entitlement is unrestricted. This closes the
+  last of the two "seat/business-unit limits are not enforced"
+  deferrals recorded in Phase 8 and again in Settings/Users — both are
+  now real, tested database constraints.
+- **System roles stay read-only; only workspace-custom roles get
+  editable permissions.** The 15 system roles seeded in Phase 1
+  (`is_system = true`, `workspace_id` null) are a shared vocabulary used
+  throughout onboarding language and every prior phase's role-gated RLS
+  policies (`private.has_workspace_role(...)`) — letting one workspace
+  redefine what "Coach" means would make that vocabulary and every
+  existing named-role check unreliable. A workspace can instead create
+  its own role and assign permissions to it via `role_permissions`,
+  which the app never had a UI for before this build despite being
+  seeded with 170 rows since Phase 1.
+- **Role deletion is blocked if any member is still assigned** — `roles`
+  has no `archived_at`/status column, so removing a role is a real
+  `DELETE`, which cascades to `role_permissions` and `member_roles`.
+  Silently unassigning a role from active members as a side effect of
+  deleting it felt like exactly the kind of silent destructive
+  side-effect worth guarding against at the application layer, even
+  though the database itself permits the cascade.
+- **`/settings/integrations` and `/settings/ai-policies` are read-only
+  indexes**, the same "reuse the richer existing object" choice made for
+  Library's SOPs/Agreements sections — `/operations/integrations`
+  (Phase 6) already owns the connect/disconnect/test-connection flow,
+  and `/ai/policies` (Phase 7) already renders the permission ladder and
+  Human Approval Matrix. Appendix A lists both pairs of routes, but
+  Section 6 never describes distinct content for the Settings-side
+  route in either case.
+- **Accessibility preferences are mirrored into a cookie
+  (`lc_a11y`), the same pattern `lib/theme/actions.ts` already uses for
+  the dark/light cookie** — the authoritative value lives in
+  `user_profiles.accessibility_preferences` (Phase 1), but root layout
+  renders for unauthenticated pages too and shouldn't need an extra DB
+  round-trip just to decide a CSS class. New CSS classes
+  (`lc-reduce-motion`, `lc-high-contrast`, `lc-large-text`) mirror the
+  existing `prefers-reduced-motion`/`prefers-contrast` media queries so
+  a manual choice can override the OS-level default either direction.
+- **Notification preferences are keyed to Section 14.4's 13 named
+  "default notification triggers"** (decision due, approval requested,
+  task overdue, etc.) even though no generator in this build actually
+  creates `notifications` rows for most of them yet — a known,
+  honestly-flagged gap (see docs/testing.md), not an oversight. The
+  preferences themselves are real and ready for when trigger-side code
+  lands.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/settings_business_unit_limit.sql`) covering
+  cross-tenant isolation on `business_units` (never directly tested
+  before now that real UI writes to it) and the new limit trigger:
+  unrestricted with no subscription, blocked once a solo-plan limit of 1
+  is met, and confirming an archived-status insert is unaffected by the
+  guard.
 - **This build reached `READY` on the first deploy.**
