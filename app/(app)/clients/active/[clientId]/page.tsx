@@ -75,15 +75,18 @@ export default async function ActiveClientRecordPage({ params }: { params: { cli
         <StatusBadge status={client.status} />
         {latestHealth && <StatusBadge status={latestHealth.status} />}
         <span className="text-sm text-soft-taupe">Client since {new Date(client.start_at).toLocaleDateString()}</span>
-        {NEXT_STATUS[client.status] && (
-          <form action={updateClientStatus}>
-            <input type="hidden" name="client_id" value={client.id} />
-            <input type="hidden" name="next_status" value={NEXT_STATUS[client.status]} />
-            <button type="submit" className="lc-btn-secondary text-xs">
-              Move to {NEXT_STATUS[client.status].replace(/_/g, " ")}
-            </button>
-          </form>
-        )}
+        {(() => {
+          const nextStatus = NEXT_STATUS[client.status];
+          return nextStatus ? (
+            <form action={updateClientStatus}>
+              <input type="hidden" name="client_id" value={client.id} />
+              <input type="hidden" name="next_status" value={nextStatus} />
+              <button type="submit" className="lc-btn-secondary text-xs">
+                Move to {nextStatus.replace(/_/g, " ")}
+              </button>
+            </form>
+          ) : null;
+        })()}
         <Link href="/clients/renewals" className="lc-btn-secondary text-xs">Renewals</Link>
         <Link href="/clients/health" className="lc-btn-secondary text-xs">Health</Link>
       </section>
