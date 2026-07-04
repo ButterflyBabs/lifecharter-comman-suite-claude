@@ -37,9 +37,9 @@ export default async function StrategyPage() {
           .from("key_results")
           .select("id, goal_id, metric_definition, baseline, target, current_value, data_source")
           .in("goal_id", goalIds)
-      : { data: [] };
+      : { data: null };
 
-  const keyResultsByGoal = new Map<string, typeof keyResults>();
+  const keyResultsByGoal = new Map<string, NonNullable<typeof keyResults>>();
   for (const kr of keyResults ?? []) {
     if (!keyResultsByGoal.has(kr.goal_id)) keyResultsByGoal.set(kr.goal_id, []);
     keyResultsByGoal.get(kr.goal_id)!.push(kr);

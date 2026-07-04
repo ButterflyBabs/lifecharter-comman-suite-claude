@@ -25,10 +25,10 @@ export default async function BrandPage() {
   const [{ data: pillars }, { data: claims }, { data: proof }] = await Promise.all([
     profile
       ? supabase.from("message_pillars").select("id, title, message, audience, proof_required").eq("brand_profile_id", profile.id)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: null }),
     profile
       ? supabase.from("claim_rules").select("id, claim_text, status, scope").eq("brand_profile_id", profile.id)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: null }),
     supabase.from("proof_items").select("id, proof_type, title, consent_status").eq("workspace_id", workspaceId),
   ]);
 

@@ -31,7 +31,7 @@ export default async function OffersPage() {
           .from("offer_versions")
           .select("id, version, problem, desired_outcome, format, duration")
           .in("id", versionIds)
-      : { data: [] };
+      : { data: null };
 
   const versionById = new Map((versions ?? []).map((v) => [v.id, v]));
 
@@ -42,9 +42,9 @@ export default async function OffersPage() {
           .select("id, offer_version_id, title, client_visible, sequence")
           .in("offer_version_id", versionIds)
           .order("sequence")
-      : { data: [] };
+      : { data: null };
 
-  const deliverablesByVersion = new Map<string, typeof deliverables>();
+  const deliverablesByVersion = new Map<string, NonNullable<typeof deliverables>>();
   for (const d of deliverables ?? []) {
     if (!deliverablesByVersion.has(d.offer_version_id)) deliverablesByVersion.set(d.offer_version_id, []);
     deliverablesByVersion.get(d.offer_version_id)!.push(d);

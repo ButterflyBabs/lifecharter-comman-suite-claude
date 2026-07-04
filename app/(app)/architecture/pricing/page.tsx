@@ -29,13 +29,13 @@ export default async function PricingPage() {
   const [{ data: pricing }, { data: capacity }, { data: economics }] = await Promise.all([
     versionIds.length > 0
       ? supabase.from("offer_pricing").select("*").in("offer_version_id", versionIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: null }),
     versionIds.length > 0
       ? supabase.from("offer_capacity_models").select("*").in("offer_version_id", versionIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: null }),
     versionIds.length > 0
       ? supabase.from("offer_economics").select("*").in("offer_version_id", versionIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: null }),
   ]);
 
   const pricingByVersion = new Map((pricing ?? []).map((p) => [p.offer_version_id, p]));
