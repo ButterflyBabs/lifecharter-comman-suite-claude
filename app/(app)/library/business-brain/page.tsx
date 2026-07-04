@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatusBadge, StatTile } from "@/components/ui";
+import { Card, PageHeader, StatusBadge, StatTile, IconBadge, IconDollarSign, IconHelpCircle, IconBookOpen } from "@/components/ui";
 import { createKnowledgeEntry, updateKnowledgeEntry, approveKnowledgeEntry, retireKnowledgeEntry } from "./actions";
 
 type KnowledgeEntry = {
@@ -89,8 +89,8 @@ export default async function BusinessBrainPage() {
             </Card>
           </Link>
         ))}
-        <StatTile value={offerCount ?? 0} label="Offers defined" />
-        <StatTile value={decisionCount ?? 0} label="Decisions recorded" />
+        <StatTile value={offerCount ?? 0} label="Offers defined" icon={<IconDollarSign />} />
+        <StatTile value={decisionCount ?? 0} label="Decisions recorded" icon={<IconHelpCircle />} />
       </section>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -112,7 +112,10 @@ function KnowledgeSection({
 }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold text-deep-indigo">{title}</h2>
+      <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+        <IconBadge size="sm"><IconBookOpen /></IconBadge>
+        {title}
+      </h2>
       <ul className="mt-3 space-y-2">
         {entries.map((e) => (
           <li key={e.id}>

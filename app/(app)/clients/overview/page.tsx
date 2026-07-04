@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile, StatusBadge } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  StatusBadge,
+  IconBadge,
+  IconCompass,
+  IconUsers,
+  IconCheckCircle,
+  IconClipboard,
+  IconFlag,
+  IconHelpCircle,
+} from "@/components/ui";
 import { addClient } from "./actions";
 
 export default async function ClientsOverviewPage() {
@@ -58,15 +70,23 @@ export default async function ClientsOverviewPage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <StatTile value={total} label="Total clients" />
-        <StatTile value={active} label="Active" />
-        <StatTile value={onboarding} label="Onboarding" />
-        <StatTile value={atRisk} label="At-risk (latest health check)" />
-        <StatTile value={openSupportRequests ?? 0} label="Open support requests" />
+        <StatTile value={total} label="Total clients" icon={<IconUsers />} />
+        <StatTile value={active} label="Active" icon={<IconCheckCircle />} />
+        <StatTile value={onboarding} label="Onboarding" icon={<IconClipboard />} />
+        <StatTile value={atRisk} label="At-risk (latest health check)" tone={atRisk > 0 ? "error" : "neutral"} icon={<IconFlag />} />
+        <StatTile
+          value={openSupportRequests ?? 0}
+          label="Open support requests"
+          tone={(openSupportRequests ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconHelpCircle />}
+        />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Go to</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconCompass /></IconBadge>
+          Go to
+        </h2>
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <Link href="/clients/journey-design" className="lc-btn-secondary">Journey Design</Link>
           <Link href="/clients/onboarding" className="lc-btn-secondary">Onboarding</Link>
@@ -82,7 +102,10 @@ export default async function ClientsOverviewPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Clients</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconUsers /></IconBadge>
+          Clients
+        </h2>
         {clients && clients.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {clients.map((c) => (

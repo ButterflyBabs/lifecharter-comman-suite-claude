@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatusBadge, StatTile } from "@/components/ui";
+import { Card, PageHeader, StatusBadge, StatTile, IconBuilding, IconGauge } from "@/components/ui";
 import { createBusinessUnit, archiveBusinessUnit, reactivateBusinessUnit } from "./actions";
 
 export default async function BusinessUnitsPage({
@@ -59,10 +59,12 @@ export default async function BusinessUnitsPage({
       )}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatTile value={activeUnits.length} label="Active business units" />
+        <StatTile value={activeUnits.length} label="Active business units" icon={<IconBuilding />} />
         <StatTile
           value={unitLimit != null ? `${activeUnits.length} / ${unitLimit}` : unitLimit === null ? "Unlimited" : "No plan limit"}
           label="Plan usage"
+          tone={unitLimit != null && activeUnits.length >= unitLimit ? "warning" : "neutral"}
+          icon={<IconGauge />}
         />
       </section>
 

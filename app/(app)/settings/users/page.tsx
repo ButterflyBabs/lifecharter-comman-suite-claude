@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatusBadge, StatTile } from "@/components/ui";
+import { Card, PageHeader, StatusBadge, StatTile, IconUsers, IconGauge } from "@/components/ui";
 import { inviteMember, updateMemberRole, setAccessReviewDate, updateMemberStatus } from "./actions";
 
 export default async function UsersPage({
@@ -69,8 +69,13 @@ export default async function UsersPage({
       )}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatTile value={activeSeats} label="Members and pending invites" />
-        <StatTile value={seatLimit != null ? `${activeSeats} / ${seatLimit}` : seatLimit === null ? "Unlimited" : "No plan limit"} label="Seat usage" />
+        <StatTile value={activeSeats} label="Members and pending invites" icon={<IconUsers />} />
+        <StatTile
+          value={seatLimit != null ? `${activeSeats} / ${seatLimit}` : seatLimit === null ? "Unlimited" : "No plan limit"}
+          label="Seat usage"
+          tone={seatLimit != null && activeSeats >= seatLimit ? "warning" : "neutral"}
+          icon={<IconGauge />}
+        />
       </section>
 
       <ul className="mt-6 space-y-3">

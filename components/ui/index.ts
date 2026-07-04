@@ -17,4 +17,13 @@ export {
   IconGauge,
   IconFlag,
   IconClock,
+  IconDollarSign,
+  IconTrendingUp,
+  IconCpu,
+  IconBookOpen,
+  IconShieldAlert,
+  IconBuilding,
+  IconWrench,
+  IconPlug,
+  IconCalendar,
 } from "./icons";

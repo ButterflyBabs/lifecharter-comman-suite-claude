@@ -113,3 +113,86 @@ export function IconClock() {
     </svg>
   );
 }
+
+export function IconDollarSign() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M12 3v18" />
+      <path d="M16 7.5c0-1.9-1.8-3-4-3s-4 1.1-4 3 1.8 2.6 4 3 4 1.1 4 3-1.8 3-4 3-4-1.1-4-3" />
+    </svg>
+  );
+}
+
+export function IconTrendingUp() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <polyline points="3,17 9,11 13,15 21,6" />
+      <polyline points="15,6 21,6 21,12" />
+    </svg>
+  );
+}
+
+export function IconCpu() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <rect x="7" y="7" width="10" height="10" rx="1.5" />
+      <path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3" />
+    </svg>
+  );
+}
+
+export function IconBookOpen() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M4 5.5c2-1 5-1 8 .5v13c-3-1.5-6-1.5-8-.5z" />
+      <path d="M20 5.5c-2-1-5-1-8 .5v13c3-1.5 6-1.5 8-.5z" />
+    </svg>
+  );
+}
+
+export function IconShieldAlert() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" />
+      <path d="M12 8v5" />
+      <line x1="12" y1="16" x2="12" y2="16.1" />
+    </svg>
+  );
+}
+
+export function IconBuilding() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <rect x="5" y="3" width="9" height="18" />
+      <path d="M14 8h5v13h-5" />
+      <path d="M8 7h1M8 11h1M8 15h1" />
+    </svg>
+  );
+}
+
+export function IconWrench() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2-2z" />
+    </svg>
+  );
+}
+
+export function IconPlug() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M9 3v5M15 3v5" />
+      <rect x="7" y="8" width="10" height="6" rx="1.5" />
+      <path d="M12 14v3a4 4 0 0 1-4 4H7" />
+    </svg>
+  );
+}
+
+export function IconCalendar() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <rect x="4" y="5" width="16" height="16" rx="2" />
+      <path d="M4 10h16M8 3v4M16 3v4" />
+    </svg>
+  );
+}

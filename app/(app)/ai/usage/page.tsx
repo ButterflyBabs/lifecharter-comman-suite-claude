@@ -1,6 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  IconBadge,
+  IconClipboard,
+  IconFlag,
+  IconDollarSign,
+  IconCheckCircle,
+  IconHelpCircle,
+  IconCpu,
+} from "@/components/ui";
 
 export default async function UsagePage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -53,16 +64,19 @@ export default async function UsagePage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={totalRuns} label="Total runs" />
-        <StatTile value={failedRuns} label="Failed runs" />
-        <StatTile value={`$${totalCost.toLocaleString()}`} label="Total cost" />
-        <StatTile value={acceptanceRate !== null ? `${acceptanceRate}%` : "—"} label="Acceptance rate" />
-        <StatTile value={rejectedOutputs} label="Rejected outputs" />
-        <StatTile value={avgRating ?? "—"} label="Average feedback rating" />
+        <StatTile value={totalRuns} label="Total runs" icon={<IconCpu />} />
+        <StatTile value={failedRuns} label="Failed runs" tone={failedRuns > 0 ? "error" : "neutral"} icon={<IconFlag />} />
+        <StatTile value={`$${totalCost.toLocaleString()}`} label="Total cost" icon={<IconDollarSign />} />
+        <StatTile value={acceptanceRate !== null ? `${acceptanceRate}%` : "—"} label="Acceptance rate" icon={<IconCheckCircle />} />
+        <StatTile value={rejectedOutputs} label="Rejected outputs" tone={rejectedOutputs > 0 ? "warning" : "neutral"} icon={<IconFlag />} />
+        <StatTile value={avgRating ?? "—"} label="Average feedback rating" icon={<IconHelpCircle />} />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Runs by agent</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconClipboard /></IconBadge>
+          Runs by agent
+        </h2>
         <ul className="mt-3 space-y-2">
           {[...runsByAgent.entries()].map(([name, count]) => (
             <li key={name}>

@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  IconBadge,
+  IconCompass,
+  IconTrendingUp,
+  IconCheckCircle,
+  IconDollarSign,
+  IconReceipt,
+  IconClipboard,
+  IconCalendar,
+} from "@/components/ui";
 
 export default async function RevenueOverviewPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -47,19 +59,36 @@ export default async function RevenueOverviewPage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={newLeadsCount ?? 0} label="New leads" />
-        <StatTile value={qualifiedLeadsCount ?? 0} label="Qualified leads" />
-        <StatTile value={(openOpportunities ?? []).length} label="Open opportunities" />
-        <StatTile value={`$${pipelineValue.toLocaleString()}`} label="Pipeline value" />
-        <StatTile value={`$${weightedValue.toLocaleString()}`} label="Weighted pipeline" />
-        <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" />
-        <StatTile value={proposalsNeedingAction ?? 0} label="Proposals needing action" />
-        <StatTile value={contractsNeedingAction ?? 0} label="Contracts needing action" />
-        <StatTile value={latestForecast?.period ?? "—"} label={latestForecast ? `Latest forecast (${latestForecast.scenario.replace("_", " ")})` : "No forecast yet"} />
+        <StatTile value={newLeadsCount ?? 0} label="New leads" icon={<IconTrendingUp />} />
+        <StatTile value={qualifiedLeadsCount ?? 0} label="Qualified leads" icon={<IconCheckCircle />} />
+        <StatTile value={(openOpportunities ?? []).length} label="Open opportunities" icon={<IconTrendingUp />} />
+        <StatTile value={`$${pipelineValue.toLocaleString()}`} label="Pipeline value" icon={<IconDollarSign />} />
+        <StatTile value={`$${weightedValue.toLocaleString()}`} label="Weighted pipeline" icon={<IconDollarSign />} />
+        <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" icon={<IconReceipt />} />
+        <StatTile
+          value={proposalsNeedingAction ?? 0}
+          label="Proposals needing action"
+          tone={(proposalsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconClipboard />}
+        />
+        <StatTile
+          value={contractsNeedingAction ?? 0}
+          label="Contracts needing action"
+          tone={(contractsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconClipboard />}
+        />
+        <StatTile
+          value={latestForecast?.period ?? "—"}
+          label={latestForecast ? `Latest forecast (${latestForecast.scenario.replace("_", " ")})` : "No forecast yet"}
+          icon={<IconCalendar />}
+        />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Go to</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconCompass /></IconBadge>
+          Go to
+        </h2>
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <Link href="/revenue/pipeline" className="lc-btn-secondary">Sales Pipeline</Link>
           <Link href="/revenue/outreach" className="lc-btn-secondary">Outreach</Link>

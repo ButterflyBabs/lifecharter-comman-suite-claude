@@ -1,7 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  IconBadge,
+  IconCompass,
+  IconCpu,
+  IconCheckCircle,
+  IconClipboard,
+  IconFlag,
+  IconBookOpen,
+  IconShieldAlert,
+  IconDollarSign,
+} from "@/components/ui";
 
 export default async function AiOverviewPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -45,17 +58,40 @@ export default async function AiOverviewPage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={activeAgents ?? 0} label="Active agents" />
-        <StatTile value={pendingApprovals ?? 0} label="Pending approvals" />
-        <StatTile value={recentOutputs ?? 0} label="Outputs this week" />
-        <StatTile value={failedRuns ?? 0} label="Failed runs" />
-        <StatTile value={staleKnowledge ?? 0} label="Knowledge sources overdue for refresh" />
-        <StatTile value={policyExceptions ?? 0} label="Flagged knowledge conflicts" />
-        <StatTile value={`$${totalCost.toLocaleString()}`} label="Total AI cost" />
+        <StatTile value={activeAgents ?? 0} label="Active agents" icon={<IconCpu />} />
+        <StatTile
+          value={pendingApprovals ?? 0}
+          label="Pending approvals"
+          tone={(pendingApprovals ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconCheckCircle />}
+        />
+        <StatTile value={recentOutputs ?? 0} label="Outputs this week" icon={<IconClipboard />} />
+        <StatTile
+          value={failedRuns ?? 0}
+          label="Failed runs"
+          tone={(failedRuns ?? 0) > 0 ? "error" : "neutral"}
+          icon={<IconFlag />}
+        />
+        <StatTile
+          value={staleKnowledge ?? 0}
+          label="Knowledge sources overdue for refresh"
+          tone={(staleKnowledge ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconBookOpen />}
+        />
+        <StatTile
+          value={policyExceptions ?? 0}
+          label="Flagged knowledge conflicts"
+          tone={(policyExceptions ?? 0) > 0 ? "error" : "neutral"}
+          icon={<IconShieldAlert />}
+        />
+        <StatTile value={`$${totalCost.toLocaleString()}`} label="Total AI cost" icon={<IconDollarSign />} />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Go to</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconCompass /></IconBadge>
+          Go to
+        </h2>
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <Link href="/ai/agents" className="lc-btn-secondary">Agent Roster</Link>
           <Link href="/ai/knowledge" className="lc-btn-secondary">Knowledge Sources</Link>

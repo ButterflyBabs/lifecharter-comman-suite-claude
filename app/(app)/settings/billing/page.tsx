@@ -1,13 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatusBadge, StatTile } from "@/components/ui";
+import { Card, PageHeader, StatusBadge, StatTile, IconBadge, IconUsers, IconBuilding, IconCpu, IconWrench, IconDollarSign } from "@/components/ui";
 import { startCheckout, openBillingPortal } from "./actions";
+import type { ReactNode } from "react";
 
 const ENTITLEMENT_LABELS: Record<string, string> = {
   seats: "Seats",
   business_units: "Business units",
   ai_runs_per_month: "AI runs / month",
   automations_enabled: "Automations enabled",
+};
+
+const ENTITLEMENT_ICONS: Record<string, ReactNode> = {
+  seats: <IconUsers />,
+  business_units: <IconBuilding />,
+  ai_runs_per_month: <IconCpu />,
+  automations_enabled: <IconWrench />,
 };
 
 export default async function BillingPage({
@@ -88,7 +96,10 @@ export default async function BillingPage({
       {isActive ? (
         <Card className="mt-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-deep-indigo">{currentPlan?.name ?? "Current plan"}</h2>
+            <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+              <IconBadge size="sm"><IconDollarSign /></IconBadge>
+              {currentPlan?.name ?? "Current plan"}
+            </h2>
             <StatusBadge status={subscription!.status} />
           </div>
           {subscription!.current_period_end && (
@@ -102,11 +113,14 @@ export default async function BillingPage({
               const entitlement = entitlementByKey.get(key);
               const current = usageByKey.get(key);
               const limit = entitlement?.limit_value;
+              const atLimit = current !== undefined && limit != null && current >= limit;
               return (
                 <StatTile
                   key={key}
                   value={current !== undefined ? `${current}${limit != null ? ` / ${limit}` : ""}` : limit != null ? `${limit}` : "Unlimited"}
                   label={ENTITLEMENT_LABELS[key] ?? key}
+                  tone={atLimit ? "warning" : "neutral"}
+                  icon={ENTITLEMENT_ICONS[key]}
                 />
               );
             })}

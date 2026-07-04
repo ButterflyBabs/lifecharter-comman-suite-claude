@@ -1,7 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile } from "@/components/ui";
+import {
+  Card,
+  PageHeader,
+  StatTile,
+  IconBadge,
+  IconCompass,
+  IconUsers,
+  IconShieldAlert,
+  IconWrench,
+  IconFlag,
+  IconClock,
+  IconPlug,
+  IconCalendar,
+} from "@/components/ui";
 
 export default async function OperationsOverviewPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -43,17 +56,50 @@ export default async function OperationsOverviewPage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={activeTeams ?? 0} label="Active teams" />
-        <StatTile value={criticalResponsibilitiesWithoutBackup ?? 0} label="Critical responsibilities without backup" />
-        <StatTile value={automationsNeedingAttention ?? 0} label="Automations not yet enabled" />
-        <StatTile value={openRisks ?? 0} label="Open risks" />
-        <StatTile value={sopsDueForReview ?? 0} label="SOPs due for review" />
-        <StatTile value={integrationErrors ?? 0} label="Integrations in error state" />
-        <StatTile value={vendorsRenewingSoon ?? 0} label="Vendor renewals within 30 days" />
+        <StatTile value={activeTeams ?? 0} label="Active teams" icon={<IconUsers />} />
+        <StatTile
+          value={criticalResponsibilitiesWithoutBackup ?? 0}
+          label="Critical responsibilities without backup"
+          tone={(criticalResponsibilitiesWithoutBackup ?? 0) > 0 ? "error" : "neutral"}
+          icon={<IconShieldAlert />}
+        />
+        <StatTile
+          value={automationsNeedingAttention ?? 0}
+          label="Automations not yet enabled"
+          tone={(automationsNeedingAttention ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconWrench />}
+        />
+        <StatTile
+          value={openRisks ?? 0}
+          label="Open risks"
+          tone={(openRisks ?? 0) > 0 ? "error" : "neutral"}
+          icon={<IconFlag />}
+        />
+        <StatTile
+          value={sopsDueForReview ?? 0}
+          label="SOPs due for review"
+          tone={(sopsDueForReview ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconClock />}
+        />
+        <StatTile
+          value={integrationErrors ?? 0}
+          label="Integrations in error state"
+          tone={(integrationErrors ?? 0) > 0 ? "error" : "neutral"}
+          icon={<IconPlug />}
+        />
+        <StatTile
+          value={vendorsRenewingSoon ?? 0}
+          label="Vendor renewals within 30 days"
+          tone={(vendorsRenewingSoon ?? 0) > 0 ? "warning" : "neutral"}
+          icon={<IconCalendar />}
+        />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Go to</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconCompass /></IconBadge>
+          Go to
+        </h2>
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <Link href="/operations/team" className="lc-btn-secondary">Team and Roles</Link>
           <Link href="/operations/capacity" className="lc-btn-secondary">Capacity</Link>

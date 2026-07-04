@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { Card, PageHeader, StatTile, StatusBadge } from "@/components/ui";
+import { Card, PageHeader, StatTile, StatusBadge, IconBadge, IconDollarSign, IconReceipt, IconClipboard } from "@/components/ui";
 import { createBudget, addBudgetLine, createExpenseCategory, addExpense } from "./actions";
 
 export default async function FinancePage() {
@@ -36,13 +36,16 @@ export default async function FinancePage() {
       />
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={`$${totalExpenses30d.toLocaleString()}`} label="Recent expenses (last 20 records)" />
-        <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" />
-        <StatTile value={budgets?.length ?? 0} label="Budget versions" />
+        <StatTile value={`$${totalExpenses30d.toLocaleString()}`} label="Recent expenses (last 20 records)" icon={<IconDollarSign />} />
+        <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" icon={<IconReceipt />} />
+        <StatTile value={budgets?.length ?? 0} label="Budget versions" icon={<IconClipboard />} />
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Budgets</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconClipboard /></IconBadge>
+          Budgets
+        </h2>
         {budgets && budgets.length > 0 ? (
           <div className="mt-3 space-y-3">
             {budgets.map((b) => (
@@ -92,7 +95,10 @@ export default async function FinancePage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-deep-indigo">Recent expenses</h2>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconReceipt /></IconBadge>
+          Recent expenses
+        </h2>
         <ul className="mt-3 space-y-2">
           {(recentExpenses ?? []).map((e) => (
             <li key={e.id}>
