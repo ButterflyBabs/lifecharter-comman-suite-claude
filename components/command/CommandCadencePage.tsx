@@ -87,7 +87,7 @@ export async function CommandCadencePage({
 
       <Link
         href={reviewPath}
-        className="mt-6 inline-block rounded bg-deep-indigo px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+        className="mt-6 inline-block rounded bg-accent px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
       >
         Open {title.toLowerCase()} review
       </Link>

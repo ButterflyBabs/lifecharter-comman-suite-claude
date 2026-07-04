@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserWorkspaces } from "@/lib/data/workspace";
 import { ModeToggle } from "./ModeToggle";
+import { ThemeToggle } from "./ThemeToggle";
 import { ProfileMenu } from "./ProfileMenu";
 
 export async function Header() {
@@ -22,7 +23,7 @@ export async function Header() {
     : { count: 0 };
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-soft-taupe/30 bg-white px-4 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-soft-taupe/30 bg-ivory-light px-4 py-3">
       <div className="flex items-center gap-4">
         <Link href="/command/today" className="font-semibold text-deep-indigo">
           LifeCharter
@@ -66,6 +67,7 @@ export async function Header() {
         {/* Section 5 requires a persistent Help control, but Appendix A defines
             no /help route — omitted rather than inventing one; see
             docs/navigation-and-routes.md. */}
+        <ThemeToggle />
         {user && <ProfileMenu email={user.email ?? "Account"} />}
       </nav>
     </header>

@@ -6,7 +6,7 @@ export function ProfileMenu({ email }: { email: string }) {
       <summary className="cursor-pointer list-none rounded px-3 py-1 text-sm text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
         {email}
       </summary>
-      <div className="absolute right-0 z-10 mt-2 w-48 rounded border border-soft-taupe bg-white p-2 shadow-md">
+      <div className="absolute right-0 z-10 mt-2 w-48 rounded border border-soft-taupe bg-ivory-light p-2 shadow-md">
         <form action={signOut}>
           <button
             type="submit"

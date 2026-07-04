@@ -131,7 +131,7 @@ export default async function RoadmapPlanPage() {
                 <form action={completePhase.bind(null, phase.id)} className="mt-3">
                   <button
                     type="submit"
-                    className="rounded bg-deep-indigo px-3 py-1 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+                    className="rounded bg-accent px-3 py-1 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
                   >
                     Close phase and start the next one
                   </button>

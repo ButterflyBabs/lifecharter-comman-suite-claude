@@ -14,7 +14,7 @@ export async function ModeToggle() {
           type="submit"
           aria-pressed={mode === "build"}
           className={`rounded-l px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal ${
-            mode === "build" ? "bg-deep-indigo text-white" : "text-deep-indigo"
+            mode === "build" ? "bg-accent text-white" : "text-deep-indigo"
           }`}
         >
           Build
@@ -25,7 +25,7 @@ export async function ModeToggle() {
           type="submit"
           aria-pressed={mode === "run"}
           className={`rounded-r px-3 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal ${
-            mode === "run" ? "bg-deep-indigo text-white" : "text-deep-indigo"
+            mode === "run" ? "bg-accent text-white" : "text-deep-indigo"
           }`}
         >
           Run

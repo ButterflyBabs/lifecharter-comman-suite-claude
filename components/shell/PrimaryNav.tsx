@@ -19,7 +19,7 @@ export function PrimaryNav() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={`block rounded px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal ${
-                  isActive ? "bg-deep-indigo font-medium text-white" : "text-deep-indigo hover:bg-soft-lavender/30"
+                  isActive ? "bg-accent font-medium text-white" : "text-deep-indigo hover:bg-soft-lavender/30"
                 }`}
               >
                 {item.label}

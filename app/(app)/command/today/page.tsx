@@ -15,7 +15,7 @@ export default async function CommandTodayPage() {
         </p>
         <Link
           href="/roadmap/setup"
-          className="mt-4 inline-block rounded bg-deep-indigo px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          className="mt-4 inline-block rounded bg-accent px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
         >
           Start setup
         </Link>
@@ -45,7 +45,7 @@ export default async function CommandTodayPage() {
         </p>
         <Link
           href="/roadmap/audit"
-          className="mt-4 inline-block rounded bg-deep-indigo px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          className="mt-4 inline-block rounded bg-accent px-4 py-2 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
         >
           Start the audit
         </Link>

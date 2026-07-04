@@ -35,7 +35,7 @@ export default async function SetupPage({
         every other workspace by database-enforced Row Level Security.
       </p>
       {error && (
-        <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -61,7 +61,7 @@ export default async function SetupPage({
             id="timezone"
             name="timezone"
             defaultValue="UTC"
-            className="mt-1 w-full rounded border border-soft-taupe bg-white px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+            className="mt-1 w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>
@@ -72,7 +72,7 @@ export default async function SetupPage({
         </div>
         <button
           type="submit"
-          className="rounded bg-deep-indigo px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          className="rounded bg-accent px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
         >
           Create workspace
         </button>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signIn } from "./actions";
+import { ThemeToggle } from "@/components/shell/ThemeToggle";
 
 export default async function LoginPage({
   searchParams,
@@ -11,9 +12,12 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-ivory-light p-8">
       <div className="w-full max-w-sm">
+        <div className="mb-4 flex justify-end">
+          <ThemeToggle />
+        </div>
         <h1 className="mb-6 text-2xl font-semibold text-deep-indigo">Sign in</h1>
         {error && (
-          <p role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
             {error}
           </p>
         )}
@@ -46,7 +50,7 @@ export default async function LoginPage({
           </div>
           <button
             type="submit"
-            className="w-full rounded bg-deep-indigo px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+            className="w-full rounded bg-accent px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
           >
             Sign in
           </button>

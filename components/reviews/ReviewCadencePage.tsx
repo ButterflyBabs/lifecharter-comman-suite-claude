@@ -140,7 +140,7 @@ export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: st
         ))}
         <button
           type="submit"
-          className="rounded bg-deep-indigo px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          className="rounded bg-accent px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
         >
           Complete review
         </button>

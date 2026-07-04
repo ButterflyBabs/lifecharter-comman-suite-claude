@@ -6,8 +6,22 @@
   --deep-indigo: #1f315b;
   --royal-plum: #5e3b6c;
   --sacred-teal: #2e7c83;
+  --soft-lavender: #cdbed6;
   --warm-gold: #d4af63;
   --ivory-light: #f6f1e8;
+  --soft-taupe: #b9a9a9;
+  --accent: #1f315b;
+}
+
+.dark {
+  --deep-indigo: #e8ecf5;
+  --royal-plum: #d9b8e8;
+  --sacred-teal: #6fd0d8;
+  --soft-lavender: #3a3350;
+  --warm-gold: #e8c987;
+  --ivory-light: #12121c;
+  --soft-taupe: #9a97ab;
+  --accent: #3d5aa0;
 }
 
 body {
@@ -37,9 +51,19 @@ body {
 }
 
 @media (prefers-contrast: more) {
+  /* --accent intentionally untouched here: buttons pair it with a hardcoded
+     white label, and driving it to match --deep-indigo/--ivory-light's
+     inverted extremes would make dark-mode high-contrast buttons white text
+     on a white fill. */
   :root {
     --deep-indigo: #000000;
     --ivory-light: #ffffff;
-    --soft-taupe: #4a4a4a;
+    --soft-taupe: #333333;
+  }
+
+  .dark {
+    --deep-indigo: #ffffff;
+    --ivory-light: #000000;
+    --soft-taupe: #cccccc;
   }
 }
