@@ -322,3 +322,45 @@ verification discipline as every prior phase.
   exercised against a real form submission.
 - **No automated CI** for the SQL tests (same gap as every prior phase — still
   run manually).
+
+## Phase 6 Test Status
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/operations_rls.sql` — proves cross-tenant isolation across
+  teams, team_memberships, responsibilities, vendors, technology_items, and
+  integration_accounts (tenant B gets 0 rows querying tenant A's teams, SOPs,
+  and technology items directly, and a cross-tenant `UPDATE` on tenant A's
+  vendor affects 0 rows), confirms the global `integration_providers` catalog
+  stays readable regardless of tenant, and exercises the new
+  `enforce_automation_enable_gate` trigger through all four cases: three
+  blocking cases (no owner, no idempotency strategy, no passing test run) each
+  raise the expected exception, and the positive case (all three conditions
+  satisfied) both succeeds and confirms the enable was written to
+  `audit_events` via the generalized `log_audit_event()` trigger.
+
+**This phase's build reached `READY` on the first deploy** — zero build-fix
+iterations, matching Phase 4's clean first pass. Every TypeScript pitfall
+learned from prior phases (`never[]` ternary fallbacks, nested-relation casts
+needing `as unknown as`, and repeated `Record`-index reads under
+`noUncheckedIndexedAccess`) was applied proactively across all 10 new pages
+from the start.
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 6 flow (team and
+  roles, capacity, SOPs, systems and automations, finance, legal and risk,
+  technology, integrations, vendors) has been verified at the SQL layer
+  (schema, RLS, the automation-enable gate trigger) and the build/runtime
+  layer (compiles, all four spot-checked routes resolve and correctly
+  redirect unauthenticated requests to `/login`), but never clicked through
+  by a human or driven by browser automation — none of the server actions
+  across the 10 pages have been exercised against a real form submission,
+  including the automation gate's UI path (claim ownership, record a test
+  run, then enable).
+- **The Operations Overview's "every critical operational alert has an
+  owner, response action, and date" rule is informational only, not
+  enforced** — the live counts are real, but there is no dedicated
+  action-queue object tying a specific alert to a specific follow-up task.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still
+  run manually).

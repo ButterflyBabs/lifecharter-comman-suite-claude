@@ -5,14 +5,15 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 5:** 126 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+**Status as of Phase 6:** 154 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
 Level Security enabled and zero new security-advisor findings. This is the full 10.3,
 the 10.4 objects Phases 1 and 2 together require, the full 10.5 Business Architecture
 objects, the full 10.6 Revenue Engine objects, the full 10.7 Client Experience objects,
-and the 10.9 subset needed for notifications, assets, templates, and reviews.
-Migrations live in `supabase/migrations/`, applied via the Supabase MCP connector and
-tracked in Supabase's own migration history (`list_migrations`). See
-[migration-and-deployment.md](migration-and-deployment.md) for full detail.
+the full 10.8 Operations set, and the 10.9 subset needed for notifications, assets,
+templates, and reviews. Migrations live in `supabase/migrations/`, applied via the
+Supabase MCP connector and tracked in Supabase's own migration history
+(`list_migrations`). See [migration-and-deployment.md](migration-and-deployment.md)
+for full detail.
 
 Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
 `workspaces`, `business_units`, `user_profiles`, `workspace_members`, `roles`,
@@ -55,9 +56,18 @@ Built in Phase 5 (30 tables — the full 10.7 Client Experience set):
 `renewal_opportunities`, `offboarding_instances`, `testimonials`, `referrals`,
 `case_studies`.
 
-Not yet built (10.8's ops objects, and 10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*`
-objects) — these land in Phases 6 and 7 per the build order (Section 18), each phase
-adding only the objects its acceptance criteria actually require.
+Built in Phase 6 (28 tables — the full 10.8 Operations set):
+`teams`, `team_memberships`, `responsibilities`, `capacity_profiles`,
+`capacity_allocations`, `sops`, `sop_versions`, `automation_definitions`,
+`automation_runs`, `automation_errors`, `vendors`, `technology_items`, `budgets`,
+`budget_lines`, `expense_categories`, `expenses`, `legal_documents`,
+`legal_document_versions`, `risks`, `incidents`, `continuity_plans`,
+`integration_providers`, `integration_accounts`, `source_of_truth_rules`,
+`field_mappings`, `sync_rules`, `sync_runs`, `webhook_events`.
+
+Not yet built (10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in
+Phase 7 per the build order (Section 18), which also introduces the AI action
+approval-gating layer per the standing instruction.
 
 ## 10.1 Data Architecture Principles
 
@@ -595,3 +605,82 @@ they are not repeated in every row.
   but no one has clicked through the actual UI with a real workspace and
   real data. Flagged honestly rather than checked off, consistent with
   every prior phase's documentation.
+
+## Assumptions Recorded in Phase 6
+
+- **`responsibilities.owner_member_id`/`backup_member_id` implement 10.8's
+  `owner_role`/`backup_role` fields as FKs to `workspace_members`, not free
+  text** — Section 6 describes these as "Primary owner"/"Backup owner",
+  i.e. specific people, not abstract role labels. `criticality` supports
+  the stated rule ("Every critical responsibility has a primary owner and,
+  when continuity requires it, a backup owner") informationally only —
+  backup stays nullable, since "when continuity requires it" is a judgment
+  call this build doesn't try to make deterministic.
+- **`team_memberships.status` and `access_review_at`, and
+  `capacity_profiles.decision_limit`/`client_cap`/`energy_load`/
+  `fixed_constraints` go beyond 10.8's literal minimum fields** — all are
+  named directly in Section 6's fuller field lists for Team and Roles /
+  Capacity, the same "10.8 lists minimum fields, Section 6 lists the fuller
+  set" pattern used in every prior phase.
+- **No automation is enabled without a test run, owner, error path,
+  idempotency protection, and audit history" is enforced by a real trigger
+  (`enforce_automation_enable_gate`)** — the same "encode the unambiguous
+  rules, document the ones that aren't" pattern as Phase 2's gate triggers
+  and Phase 4/5's immutability triggers. "Error path" is satisfied by the
+  schema itself (the `automation_errors` table and `automation_runs.status`
+  enum) rather than a per-row condition, since there's no single deterministic
+  check for "does this automation have an error path" beyond the mechanism
+  existing. "Every active automation and critical workflow links to an SOP
+  or documented exception" is **not** hard-enforced — `sop_id` and
+  `exception_note` are both nullable, since which of the two applies to a
+  given automation is a judgment call the spec doesn't make deterministic.
+- **`log_audit_event()` was generalized to derive `workspace_id` directly
+  from any tenant table's own `workspace_id` column** (an `else` branch
+  added to its existing `workspace_members`/`member_roles` special cases),
+  so the same trigger function could be attached to
+  `automation_definitions` without a table-specific carve-out — extending
+  Section 11.6's audit coverage to automation enable/disable, the same
+  "coverage widens as new sensitive tables are built" progression noted in
+  Phase 1's assumptions.
+- **`integration_providers` is treated as global reference data** (no
+  `workspace_id`, read-only to authenticated users), the same pattern as
+  Phase 2's `business_command_domains`/`audit_templates` — it's a shared
+  catalog of known provider adapters, not per-tenant content. Seeded with
+  five starter providers (Stripe, Google Calendar, QuickBooks, Zoom,
+  Mailgun) covering the integration types Section 6 names most concretely.
+- **`integration_accounts.auth_reference` is a text reference, never a raw
+  credential** — Section 6's stated rule is explicit: "Credentials are
+  encrypted and never exposed client-side." This is a naming/discipline
+  choice (no raw-secret column is ever added), not a constraint the
+  database enforces on its own.
+- **`webhook_events` has `unique(integration_account_id, external_event_id)`**
+  — the same idempotency-guard pattern as Phase 4's
+  `payments.unique(provider, provider_payment_id)`, directly serving
+  Scenario I in Section 19.2 ("retry is safe and idempotent").
+- **The Operations Overview's stated rule ("Every critical operational
+  alert has an owner, response action, and date") is not enforced** — the
+  overview page queries live counts (critical responsibilities without
+  backup, automations not yet enabled, open risks, SOPs due for review,
+  integration errors, vendor renewals due) but there is no dedicated
+  action-queue object tying a specific alert to a specific follow-up task
+  yet. The existing `tasks`/`work` engine from Phase 1 is the natural home
+  for that follow-up once built, flagged as a deferral rather than guessed
+  at.
+- **AI action rules described for this module (Legal and Risk's "AI may
+  organize and summarize but does not issue legal conclusions") are not
+  enforced** — per the standing instruction that AI actions requiring
+  human approval are deferred to the AI Team build in a later phase.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/operations_rls.sql`) covering cross-tenant isolation on
+  a representative cross-section (teams, responsibilities, vendors,
+  technology items, integration accounts, and the global provider catalog)
+  and the automation-enable gate trigger — all three blocking cases (no
+  owner, no idempotency strategy, no passing test run) and the positive
+  case (enabling succeeds once all three are satisfied, and the enable is
+  written to `audit_events`).
+- **This phase's build reached `READY` on the first deploy** — zero
+  build-fix iterations, matching Phase 4's clean first pass. The
+  established TypeScript pitfalls (`never[]` ternary fallbacks,
+  nested-relation casts needing `as unknown as`, and repeated
+  `Record`-index reads under `noUncheckedIndexedAccess`) were applied
+  proactively from the start across all 10 new pages.

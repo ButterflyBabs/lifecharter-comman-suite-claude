@@ -83,6 +83,24 @@ cross-tenant isolation on the `clients` → `client_offer_enrollments` →
 `onboarding_instances` chain and the `programs` → `program_versions` →
 `program_phases` → `sessions`/`client_actions` chain.
 
+**Phase 6 adds 28 more RLS-enabled tables** (the full Operations object set).
+`integration_providers` is the one global reference table this phase (the same
+pattern as Phase 2's `business_command_domains`/`audit_templates`) — read-only
+to authenticated users, since it's a shared catalog of provider adapters, not
+per-tenant content; every other table is workspace-membership-scoped as usual.
+One real trigger was added: `automation_definitions.enabled` cannot be set to
+`true` without an owner, a documented idempotency strategy, and a passing test
+run on record (`enforce_automation_enable_gate`), matching Section 6's stated
+rule verbatim and enforced regardless of role. `log_audit_event()` (Phase 1's
+audit trigger function) was generalized with a fallback branch so it can be
+attached to any tenant table by its own `workspace_id` column, and is now also
+wired to `automation_definitions` — extending Section 11.6's audit coverage to
+automation enable/disable. Verified with `supabase/tests/operations_rls.sql`,
+covering cross-tenant isolation on teams/responsibilities/vendors/technology
+items/integration accounts (plus confirming the global provider catalog stays
+readable across tenants) and all three blocking cases plus the positive case
+for the automation-enable gate.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |
