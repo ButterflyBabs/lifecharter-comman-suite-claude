@@ -31,10 +31,18 @@ insert into public.notification_preferences (user_id, notification_type, channel
   ('33333333-3333-3333-3333-333333333333', 'task_overdue', 'in_app', 'immediate', false);
 
 insert into public.tasks (id, workspace_id, title, owner, status, due_at) values
-  ('t0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Overdue task', '33333333-3333-3333-3333-333333333333', 'open', now() - interval '2 days');
+  ('a0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Overdue task', '33333333-3333-3333-3333-333333333333', 'open', now() - interval '2 days');
 
-insert into public.payments (id, workspace_id, amount, currency, status) values
-  ('p0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 100, 'usd', 'failed');
+-- payments.invoice_id is NOT NULL, and invoices.order_id is NOT NULL, so
+-- a failed payment needs a real order + invoice underneath it.
+insert into public.orders (id, workspace_id, total, currency, status) values
+  ('c0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 100, 'usd', 'invoiced');
+
+insert into public.invoices (id, workspace_id, order_id, amount_due, status) values
+  ('d0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'c0100000-0000-0000-0000-000000000001', 100, 'open');
+
+insert into public.payments (id, workspace_id, invoice_id, amount, currency, status) values
+  ('b0100000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'd0100000-0000-0000-0000-000000000001', 100, 'usd', 'failed');
 
 do $$
 declare
@@ -53,11 +61,11 @@ begin
   -- (the only two roles workspace_admin_user_ids returns), not the task
   -- owner (a plain member).
   select count(*) into v_count from public.notifications
-  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'p0100000-0000-0000-0000-000000000001';
+  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'b0100000-0000-0000-0000-000000000001';
   if v_count <> 1 then raise exception 'FAIL 2: Workspace Owner did not get the failed-payment notification (% rows)', v_count; end if;
 
   select count(*) into v_count from public.notifications
-  where recipient_id = '22222222-2222-2222-2222-222222222222' and type = 'payment_failed_or_overdue' and subject_id = 'p0100000-0000-0000-0000-000000000001';
+  where recipient_id = '22222222-2222-2222-2222-222222222222' and type = 'payment_failed_or_overdue' and subject_id = 'b0100000-0000-0000-0000-000000000001';
   if v_count <> 1 then raise exception 'FAIL 3: Administrator did not get the failed-payment notification (% rows)', v_count; end if;
 
   select count(*) into v_count from public.notifications
@@ -67,17 +75,17 @@ begin
   -- Second sweep: no duplicates for the still-unread, still-failed payment.
   perform private.run_notification_sweep();
   select count(*) into v_count from public.notifications
-  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'p0100000-0000-0000-0000-000000000001';
+  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'b0100000-0000-0000-0000-000000000001';
   if v_count <> 1 then raise exception 'FAIL 5: repeated sweep duplicated the notification (% rows, expected 1)', v_count; end if;
 
   -- Marking it read and re-sweeping creates a fresh one — dedup only
   -- suppresses while unread, it doesn't permanently silence a real
   -- ongoing condition.
   update public.notifications set read_at = now()
-  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'p0100000-0000-0000-0000-000000000001';
+  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'b0100000-0000-0000-0000-000000000001';
   perform private.run_notification_sweep();
   select count(*) into v_count from public.notifications
-  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'p0100000-0000-0000-0000-000000000001';
+  where recipient_id = '11111111-1111-1111-1111-111111111111' and type = 'payment_failed_or_overdue' and subject_id = 'b0100000-0000-0000-0000-000000000001';
   if v_count <> 2 then raise exception 'FAIL 6: expected a fresh notification after the prior one was read (% rows, expected 2)', v_count; end if;
 end $$;
 
