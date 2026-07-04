@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { createWorkspace } from "./actions";
+import { TIMEZONES } from "@/lib/timezones";
 
 export default async function SetupPage({
   searchParams,
@@ -56,13 +57,18 @@ export default async function SetupPage({
           <label htmlFor="timezone" className="block text-sm font-medium text-deep-indigo">
             Timezone
           </label>
-          <input
+          <select
             id="timezone"
             name="timezone"
-            type="text"
             defaultValue="UTC"
-            className="mt-1 w-full rounded border border-soft-taupe px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
-          />
+            className="mt-1 w-full rounded border border-soft-taupe bg-white px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+          >
+            {TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>
+                {tz}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           type="submit"
