@@ -7,10 +7,10 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, the entire Settings section (Appendix A), the template
-marketplace, and mobile/voice-first refinements (items 1 and 2 of Phase 8's
-deferred remainder).** Every canonical route in the app is now built. 177
-tables are live in
+Library + Search, the entire Settings section (Appendix A), and 3 of Phase 8's
+5 deferred items — the template marketplace, mobile/voice-first refinements,
+and benchmarking with privacy-safe aggregation.** Every canonical route in the
+app is now built. 177 tables are live in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
@@ -19,12 +19,12 @@ Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
 subscription billing/entitlements, usage limits, and data export/deletion,
 deferring template marketplace, white-label workspaces, cross-tenant
 benchmarking, mobile/voice refinements, and multi-brand enhancements to
-explicit future requests; the marketplace and mobile/voice-first refinements
-have since been built (see the Phase 8, template marketplace, and
-mobile/voice-first assumptions sections below). White-label workspaces,
-cross-tenant benchmarking, and multi-brand enhancements remain deferred.
-Mobile/voice-first refinements required no schema changes — pure UI/component
-work within the existing security model. Migrations live in `supabase/migrations/`,
+explicit future requests; the marketplace, mobile/voice-first refinements, and
+benchmarking have since been built (see the Phase 8, template marketplace,
+mobile/voice-first, and benchmarking assumptions sections below). Only
+white-label workspaces and multi-brand enhancements remain deferred.
+Benchmarking, like mobile/voice-first, required no new table — a single
+computed-on-read function, not stored data. Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
@@ -160,9 +160,26 @@ never a live link back to the source workspace's actual data; (2) a
 pathways" language) but nothing can set it true, since this app has no
 platform-operator/superadmin role at all — every role is workspace-scoped.
 Lives inside the existing `/library/templates` page rather than a new
-top-level route, since Appendix A has no marketplace route. White-label
-workspaces, cross-tenant benchmarking, mobile/voice refinements, and
-multi-brand enhancements remain deferred. See Assumptions below.
+top-level route, since Appendix A has no marketplace route. See
+Assumptions below.
+
+**Also built: benchmarking with privacy-safe aggregation, the third item
+of Phase 8's deferred remainder — and unlike the marketplace, this stores
+nothing new at all.** No new table. A single function,
+`get_workspace_benchmarks(p_workspace_id)`, computes four metrics for
+every workspace internally (closed-won rate, client at-risk percentage,
+capacity utilization, automation success rate — chosen because they're
+computed identically regardless of a workspace's own configuration,
+unlike user-defined KPIs) but only ever returns two numbers per metric:
+the calling workspace's own value, and an aggregate across *other*
+workspaces once at least 10 have a computable value, else null. Both
+thresholds (which metrics, and the 10-workspace anonymity floor) were
+confirmed with the user before building, the same "ask before crossing
+the isolation boundary" discipline as the marketplace. Lives inside the
+existing `/reviews/reports` page (Section 15's own stated future home for
+deeper metrics) rather than a new route. See Assumptions below. Only
+white-label workspaces and multi-brand enhancements remain deferred from
+Phase 8's original list.
 
 ## 10.1 Data Architecture Principles
 
@@ -1296,3 +1313,58 @@ they are not repeated in every row.
   established format convention from Phase 6, so no period-filtering
   logic was invented to guess at one.
 - **This build reached `READY` on the first deploy.**
+
+## Assumptions Recorded in the Benchmarking build
+
+- **The 4 metrics and the 10-workspace anonymity floor were both
+  confirmed with the user before building**, the same discipline as the
+  marketplace's two decisions — this is the second feature in this build
+  that deliberately reasons about cross-tenant data, and the spec's own
+  acceptance criterion ("Benchmarking cannot expose another workspace's
+  identifiable information") is a real security requirement, not just a
+  UX preference.
+- **Chosen metrics are computed identically for every workspace
+  regardless of its own configuration** — closed-won rate
+  (`opportunities.status`), client at-risk percentage (latest
+  `client_health_events.status` per client, deduped via `distinct on`),
+  capacity utilization (`capacity_allocations`), and automation success
+  rate (`automation_runs.status`). Section 15.2 names dozens of other
+  candidate metrics, but most of them (custom KPIs, anything keyed to a
+  workspace-defined formula) aren't safe to average across workspaces in
+  the first place — comparing two workspaces' differently-defined "close
+  rate" would be meaningless, not just unsafe.
+- **Nothing is stored — the aggregation happens entirely inside one
+  `SECURITY DEFINER` function, computed fresh on every read.** This is a
+  cleaner safety property than the marketplace's stored, RLS-gated
+  listings table: there is no row anywhere that a future overly-permissive
+  policy could accidentally expose, because there is no row. The only
+  channel out of the function is its return value — two numbers per
+  metric, never a per-workspace breakdown.
+- **The anonymity floor is a hard count, not a statistical technique** —
+  below 10 *other* contributing workspaces, `benchmark_value` is `null`
+  and the UI shows "Not enough data yet" rather than any number, including
+  a number derived from fewer than 10. The benchmark itself is also
+  rounded to 2 decimal places as a second, smaller safeguard against
+  precision-based fingerprinting once the floor is met.
+- **Learned from the marketplace RPC's grants mistake** —
+  `revoke execute ... from public, anon` was included in the *same*
+  migration as `get_workspace_benchmarks()`'s creation this time, not a
+  follow-up fix. The security advisor confirmed only the expected,
+  accepted-by-design `authenticated` finding (the function self-validates
+  before doing anything, same as `increment_usage_counter` and
+  `increment_marketplace_install_count`), with no `anon` finding at all.
+- **One build-fix iteration**: `supabase.rpc()` with no generated types
+  left the result's `.map()` callback parameter implicitly `any` under
+  strict mode — the same class of issue nested-relation selects hit
+  elsewhere in this codebase. Fixed by casting the result through
+  `unknown` to a concrete `BenchmarkRow` type, the same escape hatch
+  already used for untyped nested selects.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/benchmarking.sql`) proving the actual floor, not just
+  that the function runs: a pool of 12 other workspaces returns a real
+  closed-won-rate benchmark; a pool of 0 for client-at-risk returns
+  `null`; the function always returns exactly 4 rows regardless of how
+  many workspaces exist in the transaction (14 by the end of the test) —
+  structurally incapable of leaking a per-workspace row; and a user who
+  isn't a member of the target workspace is rejected outright rather than
+  silently reading its data.

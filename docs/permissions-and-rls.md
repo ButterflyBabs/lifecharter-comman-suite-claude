@@ -247,6 +247,28 @@ workspace regardless of how many rows are targeted in one call. The
 command palette is pure client-side navigation (a static route list,
 `router.push()`) with no data access at all.
 
+**Also built: benchmarking with privacy-safe aggregation — the second
+deliberate, confirmed exception to strict per-workspace isolation, and a
+stricter one than the marketplace's since nothing is stored at all.**
+`get_workspace_benchmarks(p_workspace_id)` is `SECURITY DEFINER` and
+self-validates the caller is an active member of the requested workspace
+before computing anything (mirroring every other self-validating function
+in this codebase — `increment_usage_counter`,
+`increment_marketplace_install_count`). Internally it reads every
+workspace's data for 4 metrics, bypassing RLS the same way any
+`SECURITY DEFINER` function does for its own queries — but the *return
+value* is the actual privacy boundary, not a policy: only the caller's own
+value and a `>=10`-other-workspaces aggregate (or `null` below that) ever
+leave the function. There is no table backing this feature, so there is no
+RLS policy to get wrong — the entire safeguard lives in the function body
+itself, confirmed by a real test proving the exact floor rather than
+assumed from the code. Grants were revoked from `public`/`anon` in the
+same migration that created the function, closing the gap the marketplace
+RPC needed a follow-up fix for. Verified with
+`supabase/tests/benchmarking.sql`, covering the floor's blocking and
+passing cases, the fixed 4-row return shape regardless of total workspace
+count, and a non-member's request being rejected outright.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

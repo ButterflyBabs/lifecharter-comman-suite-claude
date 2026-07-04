@@ -698,8 +698,57 @@ gaps:**
 - **A full sweep of every button label across ~80 routes for
   voice-friendly phrasing was not attempted** — only the spec's own named
   example surface (Approvals) was fixed.
-- **3 of Phase 8's 5 deferred items remain**: white-label client
-  workspace options, benchmarking with privacy-safe aggregation, and
-  multi-brand/multi-business enhancements.
+- **2 of Phase 8's 5 deferred items remain**: white-label client
+  workspace options and multi-brand/multi-business enhancements.
+  (Benchmarking is now built too — see the section below.)
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## Benchmarking Test Status
+
+Built Phase 8's deferred-remainder item 3 (Section 15's "Benchmarking with
+privacy-safe aggregation"): a single `get_workspace_benchmarks()`
+function, no new table, computing 4 metrics with a 10-workspace anonymity
+floor confirmed with the user before building.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/benchmarking.sql` — proves the actual floor, not just
+  that the function runs without error: a pool of 12 other workspaces
+  (each with one won opportunity) returns a real `closed_won_rate`
+  benchmark; a pool of 0 other workspaces with `client_health_events`
+  returns `null` for `client_at_risk_pct` even though the function ran
+  successfully; the function always returns exactly 4 rows regardless of
+  how many workspaces exist in the transaction (14 by the test's end),
+  proving it's structurally incapable of leaking a per-workspace row; and
+  a user who is not a member of the target workspace is rejected with the
+  membership-guard exception rather than silently reading its data.
+
+**This phase needed one build-fix iteration**: `supabase.rpc()` with no
+generated types left the result's `.map()` callback parameter implicitly
+`any` under strict mode. Fixed by casting the result through `unknown` to
+a concrete `BenchmarkRow` type — the same escape hatch already used for
+untyped nested-relation selects since Phase 3. A genuine compile-time
+catch from Vercel's build log, not a false alarm — same verification
+discipline as every prior phase.
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/reviews/reports`'
+  Benchmarks section has been verified at the SQL layer (the floor's
+  blocking and passing cases, the membership guard) and the build/runtime
+  layer (compiles after the one fix, the route resolves and correctly
+  redirects an unauthenticated request to `/login` with a 200), but no one
+  has viewed the actual benchmark tiles rendered with real data across
+  more than one workspace.
+- **The 10-workspace floor has not been exercised against this build's
+  actual production data** — the test proves the mechanism works with
+  synthetic data inside a rolled-back transaction; whether any real
+  workspace will see an actual number soon depends on how many workspaces
+  sign up and how much opportunity/health/capacity/automation data they
+  each accumulate.
+- **2 of Phase 8's 5 deferred items remain**: white-label client
+  workspace options and multi-brand/multi-business enhancements.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
