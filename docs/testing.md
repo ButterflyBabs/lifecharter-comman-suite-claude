@@ -936,6 +936,17 @@ One more real, transaction-wrapped SQL test was added and passes:
   an already-unread notification, and that marking a notification read
   lets a fresh one through on the next sweep for the same still-failed
   payment.
+- **Update:** the same file now also seeds real matching data for the
+  other 11 of 13 trigger types (`decision_due`, `approval_requested`,
+  `client_at_risk`, `contract_awaiting_signature`,
+  `lead_no_next_action`, `stage_aging_exceeded`, `automation_failed`,
+  `integration_disconnected`, `data_conflict_review`, `review_due`,
+  `capacity_threshold_exceeded`) and asserts each one's notification
+  actually fires for the right recipient — including confirming
+  `integration_disconnected` and `capacity_threshold_exceeded` (like
+  `payment_failed_or_overdue`) fan out to every workspace admin, since
+  none of those three has a specific record owner. All 19 checks pass
+  against real seeded data on the first sweep call.
 
 **This build reached `READY` on the first deploy** (the migrations
 applied cleanly; the one real bug was in a value never exercised until
@@ -945,16 +956,9 @@ phase touched no application code at all — pure database migrations).
 **Honestly not done yet, on top of every prior phase's carried-forward
 gaps:**
 
-- **The test covers 2 of 13 conditions plus the shared logic every
-  condition relies on** — `task_overdue` and `payment_failed_or_overdue`
-  are exercised directly with real matching data; the other 11
-  conditions' `WHERE` clauses are reviewed but not individually run
-  against seeded data proving they match and fire correctly. Every
-  condition funnels through the same verified
-  `private.create_notification_if_enabled()` (preference check + dedup +
-  insert), so the shared correctness is tested, but each condition's own
-  query logic is a lower-confidence "reviewed, not proven" for the
-  remaining 11.
+- ~~The test covers 2 of 13 conditions~~ **Closed**: all 13 trigger
+  types are now proven against real seeded data, not just reviewed
+  `WHERE` clauses (see the update above).
 - **The 15-minute `pg_cron` schedule has not been observed firing in
   production** — the sweep function itself was called directly and
   proven correct; whether the actual scheduled job fires reliably every
