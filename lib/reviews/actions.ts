@@ -136,7 +136,7 @@ export async function submitReview(
           { onConflict: "review_instance_id,question_key" },
         );
       for (const severity of FINDING_SEVERITIES) {
-        for (const statement of bySeverity[severity]) {
+        for (const statement of bySeverity[severity] ?? []) {
           await supabase.from("review_findings").insert({
             workspace_id: workspaceId,
             review_instance_id: reviewInstanceId,

@@ -81,8 +81,7 @@ export async function generateRoadmapFromAudit(
     return null;
   }
 
-  for (let i = 0; i < prioritized.length; i++) {
-    const domain = prioritized[i];
+  for (const [i, domain] of prioritized.entries()) {
     const { data: phase } = await supabase
       .from("roadmap_phases")
       .insert({
