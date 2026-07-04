@@ -6,7 +6,8 @@ source of truth for schema design; no table should be created that isn't listed 
 (or a documented, approved addition to it).
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
-complete, plus a prioritized first slice of Phase 8.** 175 tables are live in
+complete, plus a prioritized first slice of Phase 8, `/settings/users`, and the
+Knowledge and Asset Library + Search.** 176 tables are live in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
@@ -101,8 +102,25 @@ yet" gap. No new tables; `workspace_members` gains two columns
 (`access_review_at`, `invited_email`) and a new `enforce_seat_limit` trigger
 (see Assumptions below). `/settings/roles`, `/settings/workspace`,
 `/settings/notifications`, `/settings/accessibility`,
-`/settings/integrations`, `/settings/business-units`, all of `/library/*`,
-and `/search` remain unbuilt Phase-0 placeholders.
+`/settings/integrations`, and `/settings/business-units` remain unbuilt
+Phase-0 placeholders.
+
+**Also built: the Knowledge and Asset Library (all 11 `/library/*` routes)
+and `/search`** — the last unbuilt canonical route section from Appendix A.
+One new table, `knowledge_entries` (176th table), backs Business Brain's
+two categories with no prior home (Policies, Glossary); the other nine
+categories (business identity, founder/leadership, vision/strategy,
+business model, market/positioning, brand/messaging, offers/pricing,
+proof, decisions) are surfaced as links into their existing Phase 3/1
+pages rather than duplicated. `templates.template_type` (free text since
+Phase 1, never written to until now) gained a check constraint listing
+Section 9's 16 named template types. Brand, Offer Collateral, Client
+Resources, Content, Recordings, and Research are genuine new CRUD on the
+existing `assets`/`asset_versions`/`tags` tables (Phase 1), scoped by
+`asset_type`; SOPs and Agreements are read-only indexes linking back to
+their richer existing homes (`/operations/sops`, `/operations/legal-risk`,
+`/revenue/contracts`) rather than a second store for the same data. See
+Assumptions below.
 
 ## 10.1 Data Architecture Principles
 
@@ -982,3 +1000,89 @@ they are not repeated in every row.
   a Workspace Owner setting `access_review_at` directly via RLS with no
   admin client; and a plain member unable to change another member's
   status (0 rows affected).
+
+## Assumptions Recorded in the Knowledge and Asset Library / Search build
+
+- **Nine of Business Brain's eleven knowledge categories already had a
+  purpose-built home from earlier phases** — Section 9's Business Brain
+  names business identity, founder/leadership principles, vision and
+  strategy, business model, market and positioning, brand and messaging,
+  offers and pricing, proof, and decisions as knowledge categories, and
+  every one of those already exists as a real object
+  (`founder_profiles`, `strategy_profiles`, `business_models`,
+  `market_segments`/`positioning_profiles`, `brand_profiles`,
+  `offers`/`offer_versions`, `proof_items`, `decisions`). Rather than
+  duplicate that data into a generic knowledge table, `/library/business-brain`
+  surfaces each as a live link (and, for offers/decisions, a live count) to
+  its existing page. Only the two categories with no existing table
+  (Policies, Glossary) get real storage: a new `knowledge_entries` table
+  (176th table overall), scoped by `knowledge_type in ('policy', 'glossary')`.
+- **`knowledge_entries.version`/`status` reuse Phase 3's exact
+  "living document, edit resets to draft" pattern** established for
+  `founder_profiles`/`brand_profiles`/`strategy_profiles` — editing a
+  policy or glossary entry bumps `version` and resets `status` to `draft`,
+  requiring re-approval, rather than silently re-approving a changed
+  document.
+- **`templates.template_type` gained a check constraint** listing Section
+  9's 16 named template types (email/SMS, outreach, campaign, content
+  brief, proposal, contract, onboarding, journey/program, session,
+  progress review, renewal, testimonial/referral, SOP, automation, review,
+  report). It was free text since Phase 1 because no UI wrote to it yet;
+  constraining it now that `/library/templates` is the first real writer
+  matches the same "constrain once something actually writes here"
+  reasoning as every other enum-shaped column in this schema.
+- **Six Library sections are genuine new CRUD on the existing Phase 1
+  assets schema** (Brand, Offer Collateral, Client Resources, Content,
+  Recordings, Research) — each is `assets`/`asset_versions`/`tags` scoped
+  by a soft `asset_type` convention (`'brand'`, `'offer'`,
+  `'client_resource'`, `'content'`, `'recording'`, `'research'`), sharing
+  one component (`components/library/AssetLibrarySection.tsx`) and one
+  actions module (`lib/library/asset-actions.ts`) rather than six
+  near-identical files. `asset_type` was deliberately left unconstrained
+  (no check constraint) since it's already used loosely by other modules
+  attaching evidence/document assets elsewhere in the schema (proposals,
+  contracts, legal documents, case studies) — a hard-coded list of only
+  the Library's own eight category values would wrongly restrict those
+  other legitimate uses.
+- **No file storage bucket is configured in this build** (the same gap
+  already recorded in Phase 8's data-export work), so "add a version"
+  captures a link to where the file actually lives (Drive, Dropbox, etc.)
+  in `asset_versions.storage_path` rather than an uploaded file. Folder
+  hierarchy management (the `folders` table) has no dedicated UI yet either
+  — tags are the only organization/filter mechanism built so far.
+- **SOPs and Agreements are read-only indexes, not a second CRUD surface**
+  — `sops`/`sop_versions` already have full versioned CRUD at
+  `/operations/sops` (Phase 6), and `legal_documents`/`contracts` already
+  cover internal policy documents and client agreements
+  (`/operations/legal-risk`, `/revenue/contracts`, Phases 4 and 6). Rather
+  than fork a third store for the same concept, `/library/sops` and
+  `/library/agreements` are searchable, read-only indexes that link back
+  to the authoritative page — the same "reuse the richer existing object"
+  choice Phase 4 made for Outreach.
+- **Version History (`/library/history`) covers only the two version
+  tables Library itself directly manages** (`asset_versions`,
+  `template_versions`) — other versioned objects (`sop_versions`,
+  `contract_versions`, `legal_document_versions`, `proposal_versions`,
+  `program_versions`) already show their own history on their owning
+  page, so including them here would be a redundant, harder-to-maintain
+  second view of the same data rather than genuinely new coverage.
+- **Search is a representative cross-section, not a full-text index** —
+  `/search` runs a parallel `ILIKE` query across eight object types
+  (tasks, decisions, opportunities, assets, templates, SOPs, KPIs, AI
+  agents) chosen because each has a simple `name`/`title` column and an
+  obvious section to link results back to. It does not search all 176
+  tables, does not exclude archived items, and has no ranking beyond
+  grouping by type — a real inverted/full-text index is a reasonable
+  later refinement once usage shows which object types matter most. The
+  header's search box (`components/shell/Header.tsx`, scaffolded in an
+  earlier phase but never wired to a working `/search` page until now)
+  already posted to this route, so no navigation change was needed beyond
+  the page itself.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/library_search.sql`) covering cross-tenant isolation on
+  `knowledge_entries` (the one new table this build adds) and confirming
+  the new `templates.template_type` check constraint actually rejects an
+  out-of-list value while accepting a valid one. Assets, asset_versions,
+  folders, tags, and templates already had their RLS proven by Phase 1's
+  isolation test — not repeated here, only what's new.
+- **This build reached `READY` on the first deploy.**

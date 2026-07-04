@@ -528,8 +528,51 @@ gaps:**
 - **Business-unit limits are still unenforced** — no creation flow exists
   yet on `/settings/business-units` to hook a limit into.
 - **`/settings/roles`, `/settings/workspace`, `/settings/notifications`,
-  `/settings/accessibility`, `/settings/integrations`,
-  `/settings/business-units`, all of `/library/*`, and `/search` remain
-  unbuilt Phase-0 placeholders.**
+  `/settings/accessibility`, and `/settings/integrations` remain unbuilt
+  Phase-0 placeholders.** (`/library/*` and `/search` are now built — see
+  the Library/Search Test Status section below.)
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## Library/Search Test Status
+
+Built alongside Phase 8/Settings-Users: all 11 `/library/*` routes and
+`/search`, closing the last unbuilt canonical route section from
+Appendix A.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/library_search.sql` — proves cross-tenant isolation on
+  `knowledge_entries` (the one new table this build adds: tenant B gets 0
+  rows querying tenant A's knowledge entries directly, and a cross-tenant
+  `UPDATE` affects 0 rows), and confirms the new
+  `templates.template_type` check constraint actually rejects an
+  out-of-list value (`check_violation` raised as expected) while accepting
+  a valid one. Assets, asset_versions, folders, tags, and templates
+  already had their RLS proven by Phase 1's isolation test — not repeated
+  here, only what's new.
+
+**This build reached `READY` on the first deploy.**
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** All 11 `/library/*`
+  routes and `/search` have been verified at the SQL layer (schema, RLS on
+  the new table, the template_type constraint) and the build/runtime
+  layer (compiles; `/library/business-brain`, `/library/templates`, and
+  `/search` all resolve and correctly redirect an unauthenticated request
+  to `/login` with a 200), but none of the create/edit/archive forms
+  across the asset-library sections, Templates, or Business Brain's
+  Policies/Glossary CRUD have been exercised against a real form
+  submission.
+- **No file storage bucket is configured**, so "add a version" on any
+  asset-library section stores a link to an external file location
+  rather than an uploaded file — the same deferral already recorded for
+  Phase 8's data export. Folder hierarchy management has no UI yet either;
+  tags are the only organization/filter mechanism.
+- **Search is a representative cross-section (8 object types), not a
+  full-text index across all 176 tables** — it does not exclude archived
+  items and has no relevance ranking beyond grouping by type.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).

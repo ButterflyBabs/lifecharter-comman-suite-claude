@@ -169,6 +169,23 @@ everything else. Verified with
 and unrestricted cases, and confirming the RLS policy (not the admin
 client) is what lets a Workspace Owner write directly.
 
+**Also built: the Knowledge and Asset Library and Search, adding one new
+RLS-enabled table, `knowledge_entries`.** It uses the exact same
+workspace-membership `for all` policy pattern as every other tenant-owned
+table since Phase 1 — no new RLS pattern was needed. The six genuine
+asset-library CRUD sections (Brand, Offer Collateral, Client Resources,
+Content, Recordings, Research) write to Phase 1's existing
+`assets`/`asset_versions`/`tags` tables, whose RLS was already proven;
+SOPs and Agreements are read-only against `sops`, `legal_documents`, and
+`contracts`, likewise already RLS-proven. `/search` reads across eight
+already-RLS'd tables (tasks, decisions, opportunities, assets, templates,
+sops, kpis, ai_agents) through the regular RLS-scoped client, so a search
+can never surface another workspace's rows — the query itself is
+workspace-scoped and RLS is the backstop either way. Verified with
+`supabase/tests/library_search.sql`, covering cross-tenant isolation on
+`knowledge_entries` (the one new table) and the new
+`templates.template_type` check constraint.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |
