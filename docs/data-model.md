@@ -5,15 +5,16 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 6:** 154 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
-Level Security enabled and zero new security-advisor findings. This is the full 10.3,
-the 10.4 objects Phases 1 and 2 together require, the full 10.5 Business Architecture
-objects, the full 10.6 Revenue Engine objects, the full 10.7 Client Experience objects,
-the full 10.8 Operations set, and the 10.9 subset needed for notifications, assets,
-templates, and reviews. Migrations live in `supabase/migrations/`, applied via the
-Supabase MCP connector and tracked in Supabase's own migration history
-(`list_migrations`). See [migration-and-deployment.md](migration-and-deployment.md)
-for full detail.
+**Status as of Phase 7: the full Section 18 build order is complete.** 167 tables
+are live in `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero
+new security-advisor findings. This is the complete canonical object model —
+10.3, 10.4, 10.5, 10.6, 10.7, 10.8, and 10.9 in full — spanning Tenancy and
+Governance, Roadmap/Audit/Work/Command, Business Architecture, Revenue and
+Relationship, Client Experience and Success, Operations/Finance/Risk/Integration,
+and Reviews/AI/Notification/Library. Migrations live in `supabase/migrations/`,
+applied via the Supabase MCP connector and tracked in Supabase's own migration
+history (`list_migrations`). See
+[migration-and-deployment.md](migration-and-deployment.md) for full detail.
 
 Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
 `workspaces`, `business_units`, `user_profiles`, `workspace_members`, `roles`,
@@ -65,9 +66,14 @@ Built in Phase 6 (28 tables — the full 10.8 Operations set):
 `integration_providers`, `integration_accounts`, `source_of_truth_rules`,
 `field_mappings`, `sync_rules`, `sync_runs`, `webhook_events`.
 
-Not yet built (10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in
-Phase 7 per the build order (Section 18), which also introduces the AI action
-approval-gating layer per the standing instruction.
+Built in Phase 7 (13 tables — the 10.9 remainder: KPIs, prompt library, and the
+full AI Team object set):
+`kpis`, `kpi_values`, `prompt_templates`, `prompt_versions`, `ai_agents`,
+`ai_agent_versions`, `ai_knowledge_sources`, `ai_runs`, `ai_run_sources`,
+`ai_outputs`, `ai_approvals`, `ai_feedback`, `ai_cost_events`.
+
+Nothing remains unbuilt from Section 10's canonical object model. Every table
+named across 10.3 through 10.9 exists in `itxfgxmdyqpcytmgdysa` as of Phase 7.
 
 ## 10.1 Data Architecture Principles
 
@@ -684,3 +690,85 @@ they are not repeated in every row.
   nested-relation casts needing `as unknown as`, and repeated
   `Record`-index reads under `noUncheckedIndexedAccess`) were applied
   proactively from the start across all 10 new pages.
+
+## Assumptions Recorded in Phase 7
+
+- **Governance scaffolding only, no live LLM provider integration** — the
+  user was asked explicitly whether Phase 7's agents should call a real
+  model or whether this phase should build the data model, RLS, and UI
+  without wiring one up, and chose the latter. No API key, provider SDK,
+  or per-call cost is introduced by this phase. `/ai/runs` instead offers a
+  manual "record AI work for review" form that writes to the same
+  `ai_runs`/`ai_outputs` tables a live agent would use, so the governance
+  layer is real and testable ahead of any future live integration.
+- **`ai_agent_versions` is enriched with `capabilities`, `allowed_data`,
+  `prohibited_actions`, `provider`, and `retention_policy`** — all named
+  directly in Section 6's "Agent fields" list, richer than 10.9's minimum
+  fields.
+- **`permission_level` reuses Section 6's stated permission ladder verbatim**
+  (`read_and_analyze` / `draft` / `prepare_actions` /
+  `execute_low_risk_internal` / `human_approval_required`) as its check
+  constraint rather than free text — the same ladder Appendix C's Human
+  Approval Matrix maps onto, and the concrete value this phase's approval
+  gate reads to decide whether a recorded output needs review.
+- **`ai_knowledge_sources.source_id` is a polymorphic reference**
+  (`source_type` + `source_id`, no FK), the same pattern already used by
+  `activity_events` and `comments` — a knowledge source can point at almost
+  any object type in the system, so no single foreign key table fits.
+- **Seeded the 10 recommended agents from Section 6** (Chief of Staff,
+  Business Architect, Market Researcher, Offer Strategist, Brand Voice
+  Guardian, Content Director, Revenue Assistant, Client Success Assistant,
+  Operations Architect, Finance and Risk Analyst) via a one-click seed
+  action on `/ai/agents`, each created with a first draft version rather
+  than pre-populated as static rows — a workspace owner can still edit or
+  remove any of them.
+- **THE APPROVAL GATE — Appendix C's Human Approval Matrix is now actually
+  enforced, closing the standing deferral that has applied to every phase
+  since Phase 3.** `enforce_ai_output_approval_gate` blocks any
+  `ai_outputs` row from reaching `approved` or `executed` status unless a
+  matching `approved` row already exists in `ai_approvals` — checked on
+  every insert or update, not just at creation, so no code path (this
+  build's manual entry today, or a future live agent's direct write) can
+  skip a human decision. This is the same "encode the deterministic rule,
+  enforce it at the database layer regardless of role" pattern as every
+  prior phase's gate/immutability trigger. Lower-rung actions on the
+  permission ladder (`read_and_analyze` through
+  `execute_low_risk_internal`) are recorded with `approval_required =
+  false` and bypass the gate entirely, matching Appendix C's own
+  distinction between what may execute without approval and what may not.
+- **`ai_outputs.risk_level` and `due_at` live on the output, not the
+  approval decision** — Section 6 names both as fields of the pending
+  request itself ("Risk level", "Due date" on the AI Approval Queue), so
+  they describe what's waiting for review, while `ai_approvals` holds only
+  the decision's own fields (reviewer, status, rationale, timestamp).
+- **No dedicated KPI or prompt-library module page exists beyond 10.9's
+  minimum fields** — Section 6 doesn't describe a fuller field list for
+  either object the way it does for other modules; `kpis`/`kpi_values`
+  back the existing Reports and Trends page, and `prompt_templates`/
+  `prompt_versions` back the "Instructions" field on `ai_agent_versions`
+  the same way `offer_versions` backs `offers`.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/ai_team_rls.sql`) covering cross-tenant isolation across
+  `kpis`, `ai_agents` → `ai_agent_versions`, and `ai_knowledge_sources`,
+  plus the approval-gate trigger through all its cases: blocked with no
+  approval on file, blocked with only a rejected approval on file, and
+  succeeding once an approved record exists — including a check that the
+  same gate correctly allows the subsequent transition to `executed`.
+- **This phase's build reached `READY` on the first deploy** — zero
+  build-fix iterations, tying Phase 4 and Phase 6's clean first passes. One
+  real bug was caught and fixed before it shipped, not by the build but by
+  self-review: an early draft of `/ai/runs` tried to pass the selected
+  agent's `permission_level` to the server action via a hidden form input
+  hardcoded to the *first* agent in the list, which would have silently
+  used the wrong agent's approval policy for every other selection. Fixed
+  by having the server action look up the submitted `agent_version_id`'s
+  `permission_level` directly from the database instead of trusting a
+  client-supplied value that a static server-rendered form has no way to
+  keep in sync with the user's actual dropdown selection.
+- **No UI testing with a real browser or user, on top of every prior
+  phase's carried-forward gap** — build and typecheck are clean, and all
+  four spot-checked routes (`overview`, `agents`, `approvals`, `policies`)
+  correctly redirect an unauthenticated request to `/login` with a 200,
+  but no one has clicked through the actual UI with a real workspace,
+  including the agent-seeding action and the full record → approve →
+  execute workflow.

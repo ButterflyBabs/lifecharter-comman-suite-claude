@@ -101,6 +101,28 @@ items/integration accounts (plus confirming the global provider catalog stays
 readable across tenants) and all three blocking cases plus the positive case
 for the automation-enable gate.
 
+**Phase 7 adds 13 more RLS-enabled tables** (KPIs, prompt library, and the full
+AI Team object set), all workspace-membership-scoped — no global reference
+tables this phase. **This is the phase that finally enforces Appendix C's
+Human Approval Matrix**, closing the deferral that has applied to every phase
+since Phase 3: `enforce_ai_output_approval_gate` blocks any `ai_outputs` row
+from reaching `approved` or `executed` status without a matching `approved`
+row already on record in `ai_approvals`, enforced regardless of role on every
+insert or update, not only at creation. Outputs at the lower rungs of the
+permission ladder (`read_and_analyze` through `execute_low_risk_internal`) are
+recorded with `approval_required = false` and bypass the gate by design,
+matching Appendix C's own distinction between actions that may execute without
+approval and those that may not. No live LLM provider is called by this build
+(governance scaffolding only, per explicit user decision) — the gate applies
+identically to the manually-recorded outputs this phase produces and to any
+future live agent's writes, since it's enforced at the database layer rather
+than in application code that a live integration could bypass. Verified with
+`supabase/tests/ai_team_rls.sql`, covering cross-tenant isolation on
+`kpis`/`ai_agents`/`ai_agent_versions`/`ai_knowledge_sources` and all of the
+gate's cases: blocked with no approval on file, blocked with only a rejected
+approval on file, and succeeding (through both `approved` and `executed`)
+once an approved record exists.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

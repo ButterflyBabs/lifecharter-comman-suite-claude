@@ -364,3 +364,58 @@ from the start.
   action-queue object tying a specific alert to a specific follow-up task.
 - **No automated CI** for the SQL tests (same gap as every prior phase — still
   run manually).
+
+## Phase 7 Test Status
+
+**This is the final phase of the Section 18 build order — all 7 phases are
+now complete.**
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/ai_team_rls.sql` — proves cross-tenant isolation across
+  `kpis`, `ai_agents` → `ai_agent_versions`, and `ai_knowledge_sources`
+  (tenant B gets 0 rows querying tenant A's kpis, agents, and AI outputs
+  directly, and a cross-tenant `UPDATE` on tenant A's agent affects 0 rows),
+  and exercises the new `enforce_ai_output_approval_gate` trigger through
+  every case: an output cannot be marked `approved` with no `ai_approvals`
+  record on file (blocked), cannot be marked `approved` with only a
+  `rejected` `ai_approvals` record on file (blocked), succeeds once an
+  `approved` record exists, and the same output can then transition to
+  `executed` without a further approval (the existing approved record
+  still satisfies the gate).
+
+**This phase's build reached `READY` on the first deploy** — zero
+build-fix iterations, tying Phase 4 and Phase 6's clean first passes.
+
+One real bug was caught and fixed before it ever reached the build, by
+self-review rather than by a compile error: an early draft of the
+"record AI work for review" form on `/ai/runs` tried to pass the selected
+agent's permission level to the server action via a hidden input, but that
+input was hardcoded to the *first* agent in the dropdown list rather than
+whichever one the user actually selected — a static server-rendered form
+has no client-side way to keep a hidden field in sync with a `<select>`'s
+current value without JavaScript. Fixed by having the server action look
+up the submitted `agent_version_id`'s `permission_level` directly from the
+database instead of trusting the unreliable hidden field.
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 7 flow (AI
+  overview, agent roster including the one-click seed action, knowledge
+  sources, approval queue, run history including the manual record-for-
+  review form, policies, usage and cost) has been verified at the SQL
+  layer (schema, RLS, the approval-gate trigger) and the build/runtime
+  layer (compiles, all four spot-checked routes resolve and correctly
+  redirect unauthenticated requests to `/login`), but never clicked
+  through by a human or driven by browser automation — none of the server
+  actions across the 7 pages have been exercised against a real form
+  submission, including the full record → approve → execute workflow the
+  approval gate is meant to protect.
+- **No live LLM provider integration** — by explicit user decision for
+  this phase, no AI agent in this build actually calls a model. Every
+  `ai_runs`/`ai_outputs` row that exists is manually recorded through the
+  demo workflow on `/ai/runs`, not produced by a real agent. Wiring up an
+  actual provider (API key, SDK, per-call cost) is a deliberate future
+  decision, not an oversight.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still
+  run manually).
