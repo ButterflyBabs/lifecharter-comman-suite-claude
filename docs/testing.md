@@ -280,3 +280,45 @@ based directly on what Phase 3's failures taught.
   than guessing at an automation that could silently do the wrong thing.
 - **No automated CI** for the SQL tests (same gap as every prior phase — still run
   manually).
+
+## Phase 5 Test Status
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/client_experience_rls.sql` — proves cross-tenant isolation
+  across the `clients` → `client_offer_enrollments` → `onboarding_instances`
+  chain and the `programs` → `program_versions` → `program_phases` →
+  `sessions`/`client_actions` chain (tenant B gets 0 rows querying tenant A's
+  sessions and program versions directly, and a cross-tenant `UPDATE` on
+  tenant A's client affects 0 rows), and exercises the new trigger: publishing
+  a `program_versions` row and then attempting to update it raises the
+  expected immutability exception rather than succeeding.
+
+**Deployment took one build-fix iteration this phase**:
+
+1. `NEXT_STATUS[client.status]` (a `Record<string, string>` lookup) was
+   checked truthy once in a JSX conditional, then re-indexed twice more
+   inside that same block. `noUncheckedIndexedAccess` types every index
+   expression independently — TypeScript doesn't narrow a later read of the
+   same expression just because an earlier read of it was checked truthy, so
+   the second and third reads still typed as `string | undefined` against a
+   `string`-only prop. Fixed by computing the lookup once into a local
+   variable and reusing it — the same fix pattern already used for
+   `CADENCE_LABELS` in Phase 2.
+
+A genuine compile-time catch from Vercel's build log, not a false alarm — same
+verification discipline as every prior phase.
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 5 flow (client
+  overview, journey design, onboarding, active client record, programs and
+  delivery, sessions, actions and accountability, outcomes, health, renewals,
+  advocacy, portal settings) has been verified at the SQL layer (schema, RLS,
+  the immutability trigger) and the build/runtime layer (compiles, all four
+  spot-checked routes resolve and correctly redirect unauthenticated requests
+  to `/login`), but never clicked through by a human or driven by browser
+  automation — none of the ~30 server actions across the 12 pages have been
+  exercised against a real form submission.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still
+  run manually).

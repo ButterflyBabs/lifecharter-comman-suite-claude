@@ -71,6 +71,18 @@ covering both triggers plus cross-tenant isolation on the
 `people`/`organizations`/`leads` chain and the
 `opportunities` → `proposals` → `proposal_versions` chain.
 
+**Phase 5 adds 30 more RLS-enabled tables** (the full Client Experience object
+set), all workspace-membership-scoped — no global reference tables here either,
+since every Client Experience object (clients, journeys, programs, sessions,
+health, renewals, advocacy, etc.) is workspace-specific. One real trigger was
+added this phase, following the exact pattern Phase 4 established:
+`program_versions` become immutable once `published`
+(`enforce_program_version_immutability`), enforced regardless of role. Verified
+with `supabase/tests/client_experience_rls.sql`, covering the trigger plus
+cross-tenant isolation on the `clients` → `client_offer_enrollments` →
+`onboarding_instances` chain and the `programs` → `program_versions` →
+`program_phases` → `sessions`/`client_actions` chain.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

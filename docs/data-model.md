@@ -5,13 +5,13 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 4:** 96 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+**Status as of Phase 5:** 126 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
 Level Security enabled and zero new security-advisor findings. This is the full 10.3,
 the 10.4 objects Phases 1 and 2 together require, the full 10.5 Business Architecture
-objects, the full 10.6 Revenue Engine objects, and the 10.9 subset needed for
-notifications, assets, templates, and reviews. Migrations live in
-`supabase/migrations/`, applied via the Supabase MCP connector and tracked in
-Supabase's own migration history (`list_migrations`). See
+objects, the full 10.6 Revenue Engine objects, the full 10.7 Client Experience objects,
+and the 10.9 subset needed for notifications, assets, templates, and reviews.
+Migrations live in `supabase/migrations/`, applied via the Supabase MCP connector and
+tracked in Supabase's own migration history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
 
 Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
@@ -45,10 +45,19 @@ Built in Phase 4 (32 tables — the full 10.6 Revenue Engine set):
 `contract_versions`, `orders`, `invoices`, `payments`, `refunds`,
 `revenue_forecasts`, `forecast_lines`.
 
-Not yet built (10.7/10.8's client experience/ops objects, and 10.9's
-`kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in Phases 5 through 7 per
-the build order (Section 18), each phase adding only the objects its acceptance
-criteria actually require.
+Built in Phase 5 (30 tables — the full 10.7 Client Experience set):
+`clients`, `client_contacts`, `client_offer_enrollments`, `client_portal_access`,
+`journey_templates`, `journey_stages`, `journey_touchpoints`, `onboarding_templates`,
+`onboarding_instances`, `onboarding_items`, `programs`, `program_versions`,
+`program_phases`, `sessions`, `client_actions`, `coach_actions`, `assessments`,
+`assessment_instances`, `metrics`, `client_metric_values`, `client_milestones`,
+`deliverables`, `support_requests`, `client_health_events`, `intervention_plans`,
+`renewal_opportunities`, `offboarding_instances`, `testimonials`, `referrals`,
+`case_studies`.
+
+Not yet built (10.8's ops objects, and 10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*`
+objects) — these land in Phases 6 and 7 per the build order (Section 18), each phase
+adding only the objects its acceptance criteria actually require.
 
 ## 10.1 Data Architecture Principles
 
@@ -522,3 +531,67 @@ they are not repeated in every row.
   (`never[]` ternary fallbacks, nested-relation casts needing `as unknown as`)
   were applied proactively from the start this time, based on what Phase 3's
   build failures taught.
+
+## Assumptions Recorded in Phase 5
+
+- **`clients.status` includes `onboarding` as a distinct state beyond 10.7's
+  "active or former" framing** — Section 6's stated Onboarding gate is
+  explicit ("Payment, agreement, portal, required intake, and kickoff
+  requirements are satisfied before the client becomes Active"), which only
+  makes sense if there's a state before Active to satisfy those requirements
+  in.
+- **`journey_templates.status` and `program_versions.status`
+  (`draft`/`published`) go beyond 10.7's literal minimum fields** — Section
+  6 states explicit gates for both ("Every active offer has a published
+  client journey template"; program versions need a published/draft
+  distinction for the immutability rule below), which can't be represented
+  without a status column.
+- **`onboarding_instances.kickoff_date` and `risk_status`** are named
+  directly in Section 6's fuller field list for the Onboarding module,
+  richer than 10.7's minimum fields.
+- **`sessions.client_summary_status` (`draft`/`reviewed`/`released`) is an
+  addition beyond 10.7's minimum fields** — Section 6's stated rule is
+  explicit ("A shared summary is reviewed before client release"), which
+  needs a review state distinct from just having a summary. `internal_notes`
+  and `client_summary` are separate columns, matching 10.1's principle that
+  client-facing and internal-only content must be explicitly separated.
+- **Published program versions are immutable by a real trigger
+  (`enforce_program_version_immutability`)**, the same pattern as Phase 4's
+  sent-proposal immutability and matching Section 6's stated rule verbatim
+  ("Published program versions are immutable for existing enrollments.
+  Changes for future clients create a new version.") — attempting to update
+  a `program_versions` row once its own `status` is `published` raises a
+  Postgres exception. Unlike proposal immutability (gated on a *parent*
+  row's status), this gate is on the row's own status column, since a
+  program version has no separate parent object to check.
+- **`client_metric_values.source` has a check constraint matching Section
+  6's exact enumerated list** (`client_report`/`coach_observation`/
+  `system_record`/`assessment`) — the stated rule for Outcomes and Progress
+  is explicit: "Reports distinguish evidence, client report, coach
+  observation, and inference," which only holds if source values are
+  constrained to a known set rather than free text.
+- **`testimonials` and `case_studies` both carry `consent_status`
+  (`pending`/`granted`/`revoked`)** — the stated Advocacy rule is explicit:
+  "No public use occurs without explicit permission and approved wording."
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/client_experience_rls.sql`) covering cross-tenant
+  isolation across the `clients` → `client_offer_enrollments` →
+  `onboarding_instances` chain and the `programs` → `program_versions` →
+  `program_phases` → `sessions`/`client_actions` chain, plus the new
+  `enforce_program_version_immutability` trigger (a published program
+  version cannot be updated; the attempt raises the expected exception).
+- **Build history:** one build-fix iteration after the initial schema/UI
+  commit — `NEXT_STATUS[client.status]` (a `Record<string, string>` lookup)
+  was checked truthy once in a JSX conditional, then re-indexed twice more
+  inside it; TypeScript's `noUncheckedIndexedAccess` types each index
+  expression independently; it doesn't narrow later reads of the same
+  expression just because an earlier read of it was checked. Fixed by
+  computing the lookup once into a local and reusing it — the same fix
+  pattern already used for `CADENCE_LABELS` in Phase 2.
+- **No real browser walkthrough of any of the 12 new `/clients/*` pages
+  yet** — build and typecheck are clean, and all four spot-checked routes
+  (`overview`, `programs`, `active/[clientId]`, `portal`) correctly redirect
+  an unauthenticated request to `/login` with a 200 rather than crashing,
+  but no one has clicked through the actual UI with a real workspace and
+  real data. Flagged honestly rather than checked off, consistent with
+  every prior phase's documentation.
