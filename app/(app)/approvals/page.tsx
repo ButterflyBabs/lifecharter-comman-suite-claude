@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { decideApproval } from "./actions";
+import { decideApproval, decideApprovalsBatch } from "./actions";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
 
 export default async function ApprovalsPage() {
@@ -39,36 +39,70 @@ export default async function ApprovalsPage() {
       <section className="mt-6">
         <h2 className="text-lg font-semibold text-deep-indigo">Pending</h2>
         {pending.length > 0 ? (
-          <ul className="mt-2 space-y-2">
-            {pending.map((a) => (
-              <li key={a.id}>
-                <Card className="text-sm">
-                  <p className="font-medium">
-                    {a.approval_type} — {a.subject_type}
-                  </p>
-                  {a.comment && <p className="text-soft-taupe">{a.comment}</p>}
-                  <div className="mt-2 flex gap-2">
-                    <form action={decideApproval.bind(null, a.id, "approved")}>
-                      <button
-                        type="submit"
-                        className="rounded bg-sacred-teal px-3 py-1 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
-                      >
-                        Approve
-                      </button>
-                    </form>
-                    <form action={decideApproval.bind(null, a.id, "rejected")}>
-                      <button
-                        type="submit"
-                        className="lc-btn-secondary"
-                      >
-                        Reject
-                      </button>
-                    </form>
-                  </div>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Empty form, referenced by each row's checkbox via the `form`
+                attribute below — HTML lets an input outside a <form>'s DOM
+                subtree still submit with it by id, which avoids nesting this
+                inside each row's own per-row approve/reject forms. */}
+            <form id="batch-approvals-form" className="mt-2 flex gap-2">
+              <button
+                type="submit"
+                formAction={decideApprovalsBatch.bind(null, "approved")}
+                className="lc-btn-secondary text-xs"
+              >
+                Approve selected
+              </button>
+              <button
+                type="submit"
+                formAction={decideApprovalsBatch.bind(null, "rejected")}
+                className="lc-btn-secondary text-xs"
+              >
+                Reject selected
+              </button>
+            </form>
+
+            <ul className="mt-2 space-y-2">
+              {pending.map((a) => {
+                const label = `${a.approval_type} for ${a.subject_type}`;
+                return (
+                  <li key={a.id}>
+                    <Card className="text-sm">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          name="approval_ids"
+                          value={a.id}
+                          form="batch-approvals-form"
+                          aria-label={`Select ${label} for batch decision`}
+                          className="mt-1"
+                        />
+                        <span>
+                          <p className="font-medium">{label}</p>
+                          {a.comment && <p className="text-soft-taupe">{a.comment}</p>}
+                        </span>
+                      </label>
+
+                      <div className="mt-2 flex gap-2">
+                        <form action={decideApproval.bind(null, a.id, "approved")}>
+                          <button
+                            type="submit"
+                            className="rounded bg-sacred-teal px-3 py-1 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
+                          >
+                            Approve {label}
+                          </button>
+                        </form>
+                        <form action={decideApproval.bind(null, a.id, "rejected")}>
+                          <button type="submit" className="lc-btn-secondary text-xs">
+                            Reject {label}
+                          </button>
+                        </form>
+                      </div>
+                    </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         ) : (
           <p className="mt-2 text-sm text-soft-taupe">Nothing waiting for a decision.</p>
         )}

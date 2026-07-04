@@ -4,6 +4,7 @@ import { getUserWorkspaces } from "@/lib/data/workspace";
 import { ModeToggle } from "./ModeToggle";
 import { ThemeToggle } from "./ThemeToggle";
 import { ProfileMenu } from "./ProfileMenu";
+import { CommandPalette } from "./CommandPalette";
 
 export async function Header() {
   const supabase = await createClient();
@@ -52,6 +53,7 @@ export async function Header() {
       </form>
 
       <nav aria-label="Quick access" className="flex items-center gap-3 text-sm">
+        <CommandPalette />
         <Link href="/work" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
           Work
         </Link>

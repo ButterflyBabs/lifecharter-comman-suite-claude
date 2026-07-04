@@ -103,7 +103,13 @@ export default async function PoliciesPage() {
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-deep-indigo">Human Approval Matrix</h2>
-        <div className="mt-3 overflow-x-auto">
+
+        {/* Section 16.4: "Tables must offer card or condensed-list
+            alternatives on small screens" — a real alternative layout, not
+            just horizontal scroll ("do not shrink a dense desktop dashboard
+            into a miniature maze"). The table stays for larger screens; a
+            stacked card list replaces it below the sm breakpoint. */}
+        <div className="mt-3 hidden sm:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs uppercase text-soft-taupe">
@@ -123,6 +129,24 @@ export default async function PoliciesPage() {
             </tbody>
           </table>
         </div>
+
+        <ul className="mt-3 space-y-2 sm:hidden">
+          {APPROVAL_MATRIX.map((row) => (
+            <li key={row.action}>
+              <Card className="text-sm">
+                <p className="font-medium">{row.action}</p>
+                <p className="mt-1 text-soft-taupe">
+                  <span className="font-medium text-deep-indigo">Prepare: </span>
+                  {row.prepare}
+                </p>
+                <p className="text-soft-taupe">
+                  <span className="font-medium text-deep-indigo">Execute without approval: </span>
+                  {row.execute}
+                </p>
+              </Card>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mt-8">
