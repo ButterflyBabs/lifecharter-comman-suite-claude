@@ -185,3 +185,50 @@ hand-written code compiles.
   creates outcomes/decisions/blockers/findings by type has not been exercised against
   a real form submission.
 - **No automated CI** for the SQL tests (same gap as Phase 1 — still run manually).
+
+## Phase 3 Test Status
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/business_architecture_rls.sql` — inserts one row per new table
+  (catches column/type typos across all 19 Business Architecture objects) and proves
+  workspace isolation on a representative cross-section: the `founder_profiles`
+  singleton, the `strategy_profiles` → `goals` → `key_results` chain, and the
+  `offers` → `offer_versions` → `offer_pricing` chain, including that tenant A cannot
+  read or update tenant B's rows by direct query. Sanity-checked the same way as every
+  earlier test suite — a deliberately-failing assertion was run once first to confirm
+  it actually surfaces as an error.
+
+**Deployment took four build-fix iterations this phase** (tying Phase 2 for the most
+so far):
+
+1. TypeScript's `never[]` inference on `: { data: [] }` ternary fallbacks used for
+   "skip this query" branches — once something (`.push()`) needed a concrete element
+   type, the whole union collapsed to `never`. Fixed by switching every one of these
+   fallbacks to `: { data: null }`, matching the pattern already used elsewhere in the
+   app, and typing the resulting `Map`s as `NonNullable<typeof data>`.
+2. A nested-relation cast (`goals.business_command_domains`) failed TypeScript's
+   overlap check because the untyped Supabase client infers a many-to-one join as an
+   array by default; fixed by casting through `unknown` first, the same escape hatch
+   already used elsewhere in this codebase for untyped nested selects.
+
+Both were genuine compile-time catches from Vercel's build log, not false alarms —
+same verification discipline as every prior phase.
+
+**Honestly not done yet, on top of Phase 1 and 2's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 3 flow (founder profile,
+  strategy/goals, business model, market/positioning, brand/messaging, offer
+  portfolio, pricing/economics) has been verified at the SQL layer (schema, RLS) and
+  the build/runtime layer (compiles, routes resolve and correctly redirect
+  unauthenticated requests to `/login`), but never clicked through by a human or
+  driven by browser automation — none of the ~15 server actions across the seven
+  pages have been exercised against a real form submission.
+- **The Market and Positioning "gate" and Offer Portfolio activation are informational
+  only, not enforced.** Section 6 describes these as hard gates ("the system
+  recommends active campaigns or prospecting" / offer activation requirements), but
+  since the downstream systems they'd gate (campaigns, prospecting, full offer
+  readiness checks) don't exist until later phases, Phase 3 surfaces the gate status
+  as a banner/badge rather than blocking any action.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still run
+  manually).

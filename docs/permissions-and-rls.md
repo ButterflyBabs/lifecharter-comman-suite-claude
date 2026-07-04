@@ -46,6 +46,17 @@ client, since RLS grants no authenticated INSERT on `workspaces`) was verified w
 `supabase/tests/setup_wizard_workspace_bootstrap.sql` to actually produce
 RLS-recognized ownership, not just rows that look right.
 
+**Phase 3 adds 19 more RLS-enabled tables** (the full Business Architecture object
+set — see [data-model.md](data-model.md)), all using the same workspace-membership
+policy pattern as every tenant-owned table since Phase 1; there are no global
+reference tables in this set (unlike Phase 2's domains/templates), since every
+Business Architecture object is workspace-specific content. Verified with
+`supabase/tests/business_architecture_rls.sql`, covering the `founder_profiles`
+singleton, the `strategy_profiles` → `goals` → `key_results` chain, and the
+`offers` → `offer_versions` → `offer_pricing`/`offer_capacity_models`/
+`offer_economics` chain — same rolled-back-transaction, deliberately-break-one-
+assertion-first rigor as the earlier test suites.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

@@ -5,12 +5,12 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 2:** 45 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
-Level Security enabled and zero security-advisor findings. This is the full 10.3, the
-10.4 objects Phases 1 and 2 together require, and the 10.9 subset needed for
-notifications, assets, templates, and reviews. Migrations live in
-`supabase/migrations/`, applied via the Supabase MCP connector and tracked in Supabase's
-own migration history (`list_migrations`). See
+**Status as of Phase 3:** 64 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+Level Security enabled and zero new security-advisor findings. This is the full 10.3,
+the 10.4 objects Phases 1 and 2 together require, the full 10.5 Business Architecture
+objects, and the 10.9 subset needed for notifications, assets, templates, and reviews.
+Migrations live in `supabase/migrations/`, applied via the Supabase MCP connector and
+tracked in Supabase's own migration history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
 
 Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
@@ -27,10 +27,17 @@ Built in Phase 2 (19 tables — the rest of 10.4, plus the 10.9 review objects):
 `milestone_dependencies`, `stage_gates`, `gate_requirements`, `completion_evidence`,
 `review_templates`, `review_instances`, `review_responses`, `review_findings`.
 
-Not yet built (all of 10.5 through 10.8's business-architecture/revenue/client/ops
-objects, and 10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in
-Phases 3 through 7 per the build order (Section 18), each phase adding only the
-objects its acceptance criteria actually require.
+Built in Phase 3 (19 tables — the full 10.5 Business Architecture set):
+`founder_profiles`, `decision_principles`, `strategy_profiles`, `goals`,
+`key_results`, `business_models`, `market_segments`, `ideal_profiles`,
+`positioning_profiles`, `brand_profiles`, `message_pillars`, `claim_rules`,
+`proof_items`, `offers`, `offer_versions`, `offer_deliverables`, `offer_pricing`,
+`offer_capacity_models`, `offer_economics`.
+
+Not yet built (10.6 through 10.8's revenue/client/ops objects, and 10.9's
+`kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in Phases 4 through 7 per
+the build order (Section 18), each phase adding only the objects its acceptance
+criteria actually require.
 
 ## 10.1 Data Architecture Principles
 
@@ -389,3 +396,57 @@ they are not repeated in every row.
   approval step (someone other than the submitter reviewing evidence) is a
   reasonable later refinement once delivery/review roles exist to make that
   distinction meaningful — Phase 2 has no such role structure yet.
+
+## Assumptions Recorded in Phase 3
+
+- **Section 10.5's field lists are explicitly "minimum fields", not exhaustive** —
+  Section 6's "Modules and fields" spec for each of the seven Business Architecture
+  modules gives a fuller field list, and Phase 3's migrations implement that fuller
+  list, using 10.5's names as the anchor for relational/versioning columns
+  (`current_version_id`, `strategy_profile_id`, etc.). See each migration file's header
+  comment for the specific per-table enrichment.
+- **`goals.domain_id` and `goals.review_cadence` go beyond 10.5's literal minimum
+  fields** for that object, because Section 6's stated rule for the Vision and
+  Strategy module is explicit: "Every goal links to a domain, metric, owner, review
+  cadence, and observable target." Without these two columns that rule can't be
+  represented.
+- **`ideal_profiles.is_primary` and `positioning_profiles.is_primary`** aren't in
+  10.5's minimum fields either, but Section 6's stated gate for Market and Positioning
+  requires knowing which ideal profile and positioning statement are primary: "At
+  least one approved primary ideal profile and positioning statement exist before the
+  system recommends active campaigns or prospecting."
+- **`founder_profiles`, `brand_profiles`, `strategy_profiles`, and `business_models`
+  are workspace singletons** — `unique(workspace_id)`, one row per workspace, an
+  incrementing `version` column, and `status` (`draft`/`approved`) that resets to
+  `draft` on every edit (requiring re-approval). Section 6 frames each as "Versioned
+  strategic direction" / similar language describing one evolving profile revised
+  over time, not a table of independent historical snapshots — the same pattern
+  already used for `assets`/`templates` in Phase 1 (stable identity + a
+  `current_version_id` pointer), simplified here since there's no need to keep
+  every prior version queryable, only the version *number*.
+- **`offer_pricing`, `offer_capacity_models`, and `offer_economics` are 1:1 with an
+  `offer_version`** (`unique(offer_version_id)`), matching the comment already in
+  their migration but requiring a follow-up migration
+  (`20260704090000_phase3_offer_subtables_1to1.sql`) to actually add the constraint,
+  needed so the Pricing and Economics page can `upsert` cleanly instead of
+  accumulating duplicate rows per version.
+- **AI action approval gates described in Section 6 (e.g. "before unsupervised
+  internal drafting begins") are not enforced in Phase 3** — per the standing
+  instruction that AI actions requiring human approval are deferred to a later
+  phase. The `status` (`draft`/`approved`) field on every profile object is the data
+  foundation those gates will read from once AI actions are actually built; Phase 3
+  only builds the human-facing approve action, not an AI system checking it.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/business_architecture_rls.sql`) covering the `founder_profiles`
+  singleton, the `strategy_profiles` → `goals` → `key_results` chain, and the
+  `offers` → `offer_versions` → `offer_pricing`/`offer_capacity_models`/
+  `offer_economics` chain — not just applied and assumed correct. A deliberately
+  broken assertion was run once to confirm the test harness actually surfaces
+  failures, per the same rigor as Phase 1 and Phase 2's tests.
+- **Build history:** this phase needed three build-fix iterations after the initial
+  schema/UI commit — (1) TypeScript's `never[]` inference on `: { data: [] }`
+  ternary fallbacks for "skip this query" branches, fixed by using `: { data: null }`
+  everywhere instead (matching the pattern already used elsewhere in the app), and
+  (2) a nested-relation cast (`goals.business_command_domains`) that needed to go
+  through `unknown` first since the untyped Supabase client infers a many-to-one
+  join as an array by default.
