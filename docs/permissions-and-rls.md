@@ -57,6 +57,20 @@ singleton, the `strategy_profiles` → `goals` → `key_results` chain, and the
 `offer_economics` chain — same rolled-back-transaction, deliberately-break-one-
 assertion-first rigor as the earlier test suites.
 
+**Phase 4 adds 32 more RLS-enabled tables** (the full Revenue Engine object set),
+all workspace-membership-scoped — no global reference tables here either, since
+every Revenue Engine object (leads, opportunities, proposals, payments, etc.) is
+workspace-specific. Two real triggers were added this phase and are now part of
+what "correct" means for this schema, not just documented rules: opportunity
+stage changes are logged to `stage_history` (`log_opportunity_stage_change`), and
+sent `proposal_versions` become immutable (`enforce_proposal_version_immutability`)
+regardless of role — even a service-role/superuser connection cannot bypass a
+trigger the way it can bypass an RLS policy, so this rule holds even for
+admin-level database access. Verified with `supabase/tests/revenue_engine_rls.sql`,
+covering both triggers plus cross-tenant isolation on the
+`people`/`organizations`/`leads` chain and the
+`opportunities` → `proposals` → `proposal_versions` chain.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

@@ -232,3 +232,51 @@ same verification discipline as every prior phase.
   as a banner/badge rather than blocking any action.
 - **No automated CI** for the SQL tests (same gap as every prior phase — still run
   manually).
+
+## Phase 4 Test Status
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/revenue_engine_rls.sql` — proves cross-tenant isolation across
+  the `people`/`organizations`/`leads` chain and the
+  `opportunities` → `proposals` → `proposal_versions` chain, and exercises both
+  new triggers: an opportunity stage change logs exactly one `stage_history` row,
+  and updating a `proposal_versions` row after its parent proposal has been sent
+  raises the expected immutability exception rather than succeeding. Building this
+  test surfaced a real test-authoring mistake (not a schema bug): comparing two
+  `now()`-derived timestamps captured inside the same `BEGIN;...ROLLBACK;` block
+  can never detect a same-transaction change, since `now()` is frozen at
+  transaction start for the whole block — corrected to rely on the
+  `stage_history` row alone as proof the trigger fired.
+
+**This phase's build reached `READY` on the first deploy** — zero build-fix
+iterations, a first for this project. The two TypeScript pitfalls that took
+multiple iterations to catch in Phase 3 (`never[]` inference on `: { data: [] }`
+ternary fallbacks, and nested-relation casts needing `as unknown as` before the
+target type) were applied proactively across all 12 new pages from the start,
+based directly on what Phase 3's failures taught.
+
+**Honestly not done yet, on top of every prior phase's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 4 flow (relationships,
+  pipeline with stage moves, discovery sessions, proposals, contracts, payments,
+  forecast, campaigns, content workflow, marketing nurture sequences, outreach)
+  has been verified at the SQL layer (schema, RLS, both triggers) and the
+  build/runtime layer (compiles, routes resolve and correctly redirect
+  unauthenticated requests to `/login`), but never clicked through by a human or
+  driven by browser automation — none of the ~20 server actions across the 12
+  pages have been exercised against a real form submission.
+- **The Campaign launch gate and Content publish gate are informational only, not
+  enforced** — same pattern as Phase 3's Market gate: Section 6 describes them as
+  hard gates, but Phase 4 surfaces gate status as a banner/badge rather than
+  blocking the underlying action, since enforcing them meaningfully would require
+  systems (real campaign execution, real publishing pipelines) this build doesn't
+  have yet.
+- **The "contract signed creates the order and invoice workflow" automation rule
+  is not implemented as a trigger** — unlike the stage-history and proposal-
+  immutability rules, this one was judged too underspecified to encode safely (the
+  spec doesn't define the exact order/invoice field mapping), so Phase 4 leaves it
+  as a manual action (create contract, then separately create the order) rather
+  than guessing at an automation that could silently do the wrong thing.
+- **No automated CI** for the SQL tests (same gap as every prior phase — still run
+  manually).

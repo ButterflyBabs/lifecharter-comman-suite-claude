@@ -5,12 +5,13 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 3:** 64 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+**Status as of Phase 4:** 96 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
 Level Security enabled and zero new security-advisor findings. This is the full 10.3,
 the 10.4 objects Phases 1 and 2 together require, the full 10.5 Business Architecture
-objects, and the 10.9 subset needed for notifications, assets, templates, and reviews.
-Migrations live in `supabase/migrations/`, applied via the Supabase MCP connector and
-tracked in Supabase's own migration history (`list_migrations`). See
+objects, the full 10.6 Revenue Engine objects, and the 10.9 subset needed for
+notifications, assets, templates, and reviews. Migrations live in
+`supabase/migrations/`, applied via the Supabase MCP connector and tracked in
+Supabase's own migration history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
 
 Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
@@ -34,8 +35,18 @@ Built in Phase 3 (19 tables — the full 10.5 Business Architecture set):
 `proof_items`, `offers`, `offer_versions`, `offer_deliverables`, `offer_pricing`,
 `offer_capacity_models`, `offer_economics`.
 
-Not yet built (10.6 through 10.8's revenue/client/ops objects, and 10.9's
-`kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in Phases 4 through 7 per
+Built in Phase 4 (32 tables — the full 10.6 Revenue Engine set):
+`people`, `organizations`, `relationship_roles`, `relationship_links`,
+`lead_sources`, `leads`, `research_projects`, `research_findings`, `lead_scores`,
+`campaigns`, `campaign_members`, `content_assets`, `nurture_sequences`,
+`nurture_steps`, `interactions`, `outreach_messages`, `pipeline_definitions`,
+`pipeline_stages`, `opportunities`, `opportunity_stakeholders`, `stage_history`,
+`discovery_sessions`, `proposals`, `proposal_versions`, `contracts`,
+`contract_versions`, `orders`, `invoices`, `payments`, `refunds`,
+`revenue_forecasts`, `forecast_lines`.
+
+Not yet built (10.7/10.8's client experience/ops objects, and 10.9's
+`kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in Phases 5 through 7 per
 the build order (Section 18), each phase adding only the objects its acceptance
 criteria actually require.
 
@@ -450,3 +461,64 @@ they are not repeated in every row.
   (2) a nested-relation cast (`goals.business_command_domains`) that needed to go
   through `unknown` first since the untyped Supabase client infers a many-to-one
   join as an array by default.
+
+## Assumptions Recorded in Phase 4
+
+- **Outreach (`/revenue/outreach`) has no dedicated table beyond
+  `outreach_messages`** — Section 10.6 doesn't define one, and Section 6's
+  "core fields" for the module (qualification rationale, recommended offer,
+  outreach angle, reply status, next action) are really properties of a lead
+  being worked, not a separate record. They live on `leads`; the Outreach page
+  is a working view joining `leads` + `research_findings` + `lead_scores` +
+  `outreach_messages`, not a new object.
+- **`people.consent_status` is `jsonb`, not a single text value** — Section 6
+  explicitly describes "Consent by channel" (plural/structured: email consent,
+  SMS consent, etc. can differ), which 10.6's literal `consent_status` column
+  name doesn't capture on its own.
+- **`pipeline_stages.entry_gate_id`/`exit_gate_id` reuse the `stage_gates` table
+  from Phase 2** rather than a new gate mechanism — 10.6 names these fields
+  after exactly that object, and reusing it means pipeline stage gates get the
+  same enforcement primitive as roadmap gates for free whenever that's needed.
+- **Opportunity stage movement is a real trigger
+  (`log_opportunity_stage_change`)**, not just documentation of a rule — every
+  stage change inserts a `stage_history` row and bumps `stage_entered_at`.
+  `days_in_stage` is deliberately **not** a stored column; it's
+  `now() - stage_entered_at` computed at query time, since there's no scheduled
+  job in this build to keep a stored value from going stale.
+- **Sent proposal versions are immutable by a real trigger
+  (`enforce_proposal_version_immutability`)**, matching Section 6's stated rule
+  verbatim ("Sent proposals are immutable. Revisions create new versions.") —
+  attempting to update a `proposal_versions` row once the parent `proposals`
+  row has left `draft` status raises a Postgres exception rather than silently
+  succeeding.
+- **`payments` has `unique(provider, provider_payment_id)`** — the idempotency
+  guard for Section 6's stated automation rule ("Duplicate provider events must
+  not duplicate payments or onboarding"). Only the payments half is enforced
+  yet; the onboarding half can't be, since `onboarding_instances` doesn't exist
+  until Phase 5 (Client Experience).
+- **`refunds.approval_id` routes through the existing Phase 1 `approvals`
+  table** rather than a bespoke refund-approval mechanism — refund issuance is
+  exactly the "prepare only, no AI execution without human approval" action
+  Appendix C describes, and the approvals queue already exists to serve that
+  purpose for every other gated action.
+- **Caught and fixed a self-introduced bug during this phase**:
+  `revenue_forecasts.scenario` defaulted to `'base'`, which wasn't one of its
+  own check constraint's allowed values (`best_case`/`base_case`/`downside`) —
+  would only have surfaced if a row were ever inserted relying on the default
+  rather than specifying scenario explicitly. Fixed via a follow-up migration
+  before it could bite anyone.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/revenue_engine_rls.sql`) covering cross-tenant isolation
+  across the `people`/`organizations`/`leads` chain and the
+  `opportunities` → `proposals` → `proposal_versions` chain, plus both new
+  triggers (stage-history logging and proposal immutability). Along the way,
+  a same-transaction `now()` vs. `now()` timestamp comparison in the test
+  itself produced a false failure — `now()` is frozen at transaction start for
+  the whole `BEGIN;...ROLLBACK;` block, so it can never detect a same-transaction
+  change. Corrected to rely only on the `stage_history` row as proof the
+  trigger fired, not a timestamp delta.
+- **This phase's build reached `READY` on the first deploy** — the two
+  TypeScript pitfalls that took multiple iterations to find in Phase 3
+  (`never[]` ternary fallbacks, nested-relation casts needing `as unknown as`)
+  were applied proactively from the start this time, based on what Phase 3's
+  build failures taught.
