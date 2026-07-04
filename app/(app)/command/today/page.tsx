@@ -157,9 +157,12 @@ export default async function CommandTodayPage() {
       />
 
       {/* 1. Current priority */}
-      <Card className="mt-4 text-sm">
-        <p className="text-xs uppercase text-soft-taupe">Current priority</p>
-        <p className="mt-1 font-medium">{currentPriority}</p>
+      <Card
+        className="mt-4 border-l-4 text-sm"
+        style={{ borderLeftColor: oldestBlocker ? "var(--error)" : mostOverdueTask ? "var(--warning)" : "var(--card-border)" }}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide text-soft-taupe">Current priority</p>
+        <p className="mt-1 text-base font-medium">{currentPriority}</p>
       </Card>
 
       {needsActivation && (
@@ -172,7 +175,7 @@ export default async function CommandTodayPage() {
       {/* 2. Today's work */}
       {mode === "run" && (
         <section className="mt-6">
-          <h2 className="text-lg font-semibold text-deep-indigo">Due today or overdue</h2>
+          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Due today or overdue</h2>
           {overdueTasks && overdueTasks.length > 0 ? (
             <ul className="mt-2 space-y-2">
               {overdueTasks.map((t) => (
@@ -189,7 +192,7 @@ export default async function CommandTodayPage() {
 
       {mode === "build" && activePhase && (
         <section className="mt-6">
-          <h2 className="text-lg font-semibold text-deep-indigo">Active roadmap phase: {activePhase.name}</h2>
+          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Active roadmap phase: {activePhase.name}</h2>
           <ul className="mt-2 space-y-2">
             {(activePhase.roadmap_milestones as unknown as { id: string; title: string; status: string }[])?.map((m) => (
               <li key={m.id}>
@@ -204,37 +207,37 @@ export default async function CommandTodayPage() {
 
       {/* 3. Decisions and approvals */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold text-deep-indigo">Decisions and approvals</h2>
-        <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Decisions and approvals</h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link href="/decisions">
-            <StatTile value={openDecisions ?? 0} label="Open decisions" />
+            <StatTile value={openDecisions ?? 0} label="Open decisions" tone={(openDecisions ?? 0) > 0 ? "warning" : "neutral"} />
           </Link>
           <Link href="/approvals">
-            <StatTile value={pendingApprovals ?? 0} label="Pending approvals" />
+            <StatTile value={pendingApprovals ?? 0} label="Pending approvals" tone={(pendingApprovals ?? 0) > 0 ? "warning" : "neutral"} />
           </Link>
         </div>
       </section>
 
       {/* 4. Client and revenue alerts */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold text-deep-indigo">Client and revenue alerts</h2>
-        <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Client and revenue alerts</h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Link href="/clients/health">
-            <StatTile value={atRiskClientCount} label="Clients at risk" />
+            <StatTile value={atRiskClientCount} label="Clients at risk" tone={atRiskClientCount > 0 ? "error" : "neutral"} />
           </Link>
           <Link href="/revenue/payments">
-            <StatTile value={overdueInvoices ?? 0} label="Overdue invoices" />
+            <StatTile value={overdueInvoices ?? 0} label="Overdue invoices" tone={(overdueInvoices ?? 0) > 0 ? "error" : "neutral"} />
           </Link>
           <Link href="/revenue/payments">
-            <StatTile value={failedPayments ?? 0} label="Failed payments" />
+            <StatTile value={failedPayments ?? 0} label="Failed payments" tone={(failedPayments ?? 0) > 0 ? "error" : "neutral"} />
           </Link>
         </div>
       </section>
 
       {/* 5. Roadmap progress */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold text-deep-indigo">Roadmap progress</h2>
-        <Card className="mt-2 text-sm">
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Roadmap progress</h2>
+        <Card className="mt-3 text-sm">
           {activePhase ? (
             <p>
               Active phase: <span className="font-medium">{activePhase.name}</span>
@@ -250,8 +253,8 @@ export default async function CommandTodayPage() {
 
       {/* 6. Capacity */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold text-deep-indigo">Capacity</h2>
-        <div className="mt-2">
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">Capacity</h2>
+        <div className="mt-3">
           <Link href="/operations/capacity">
             <StatTile value={capacityLabel} label="Actual vs. planned hours logged" />
           </Link>
@@ -261,8 +264,8 @@ export default async function CommandTodayPage() {
       {/* 7. Secondary metrics and history */}
       <details className="mt-8">
         <summary className="cursor-pointer text-sm text-deep-indigo underline">Secondary metrics and history</summary>
-        <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <StatTile value={blockers?.length ?? 0} label="Active blockers" />
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile value={blockers?.length ?? 0} label="Active blockers" tone={(blockers?.length ?? 0) > 0 ? "error" : "neutral"} />
           <div className="lc-card flex items-center p-4 text-sm">
             <Link href="/reviews/daily" className="text-deep-indigo underline">
               Open today&apos;s review
