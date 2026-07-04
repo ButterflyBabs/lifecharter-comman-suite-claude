@@ -136,3 +136,52 @@ sign-in form.
 - **Login/sign-up haven't been exercised with real credentials** — form rendering
   and the unauthenticated-redirect behavior are confirmed; a full round-trip
   (create account, receive email, click link, sign in, see workspace data) is not.
+
+## Phase 2 Test Status
+
+Two more real, transaction-wrapped SQL tests were added and pass:
+
+- `supabase/tests/roadmap_gate_enforcement.sql` — proves a milestone cannot be marked
+  done without approved evidence, a phase cannot be marked complete with incomplete
+  milestones, and both **can** proceed once their conditions are actually met (the
+  positive case, not just the blocking case).
+- `supabase/tests/setup_wizard_workspace_bootstrap.sql` — proves the setup wizard's
+  service-role bootstrap (workspace + membership + Workspace Owner role) produces a
+  membership the RLS policies actually recognize as ownership (the new user can read
+  *and update* their own workspace), not just that the rows were inserted.
+
+**Deployment took four build-fix iterations this phase** (vs. two for Phase 0, zero
+for Phase 1's first pass) — the largest, most logic-heavy phase so far, and it showed:
+
+1. An unescaped apostrophe in JSX text (`react/no-unescaped-entities`).
+2. An `eslint-disable-next-line` referencing a rule
+   (`@typescript-eslint/no-explicit-any`) not registered in this project's ESLint
+   config — Next treats unknown rule names in disable comments as errors.
+3. `typedRoutes` (an experimental flag enabled in Phase 0 without strong
+   justification) rejected a dynamic `string` prop passed to `<Link href>` — a
+   totally normal pattern for a shared component with multiple callers. Disabled
+   the flag rather than restructuring working code around an experimental one.
+4. `noUncheckedIndexedAccess` (a real strict-mode setting, kept) flagged
+   `Record<string, T>` and `array[i]` indexed reads as possibly `undefined`, since TS
+   can't track prior assignment through computed keys or loop counters. Fixed with a
+   `?? []` fallback and a `for...of .entries()` loop instead of indexed access.
+
+Each was a genuine compile-time catch, not a false alarm — this is the same pattern
+established in Phase 0: treating Vercel's build as the real verification step (since
+no local Node runtime exists in the execution sandbox) rather than assuming
+hand-written code compiles.
+
+**Honestly not done yet, on top of Phase 1's carried-forward gaps:**
+
+- **No UI testing with a real browser or user.** Every Phase 2 flow (setup wizard,
+  audit scoring, roadmap generation, review completion, Command Center) has been
+  verified at the SQL layer (schema, RLS, gate triggers) and the build/runtime layer
+  (compiles, route protection still works), but never clicked through by a human or
+  driven by browser automation. The "close phase and advance to next phase" cascade
+  in particular has only been reasoned through, not executed.
+- **Review completion's TypeScript logic (`lib/reviews/actions.ts`) now typechecks
+  cleanly, but was never executed.** Vercel's build step type-checks and bundles the
+  code; it does not run it. The loop that parses form fields, upserts responses, and
+  creates outcomes/decisions/blockers/findings by type has not been exercised against
+  a real form submission.
+- **No automated CI** for the SQL tests (same gap as Phase 1 — still run manually).

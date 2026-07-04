@@ -32,6 +32,20 @@ connector, not wired into an automated CI pipeline — see
 Permission enforcement is coarser than the full model below describes — see
 "Phase 1 Enforcement, Honestly" beneath the permission model.
 
+**Phase 2 adds 19 more RLS-enabled tables** (audit, roadmap/gates, review center —
+see [data-model.md](data-model.md)) using the same two patterns: workspace-membership
+policies for tenant-owned rows, and `auth.role() = 'authenticated'` read-only policies
+for the global reference tables (`business_command_domains`, `audit_templates`,
+`audit_questions`, `roadmap_templates`, `review_templates`). Also new: two database
+triggers that enforce stage-gate blocking regardless of what the UI does or doesn't
+check — proven with a real test the same way workspace isolation was (see
+[data-model.md's Phase 2 assumptions](data-model.md#assumptions-recorded-in-phase-2)
+and `supabase/tests/roadmap_gate_enforcement.sql`). The setup wizard's
+workspace-bootstrap flow (the one place in the app that must use the service-role
+client, since RLS grants no authenticated INSERT on `workspaces`) was verified with
+`supabase/tests/setup_wizard_workspace_bootstrap.sql` to actually produce
+RLS-recognized ownership, not just rows that look right.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

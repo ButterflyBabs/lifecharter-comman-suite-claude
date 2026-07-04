@@ -24,6 +24,14 @@ Two things Appendix A doesn't fully specify, resolved here as low-risk assumptio
    renders. Resolved as a redirect to `/command/today` (Command Center is the
    product's stated front door — see Section 20, Product Definition of Done: "A new
    coach can enter the application and understand the first correct step").
+3. **Daily review has two required flows but one canonical route.** Section 9.2
+   defines a "Daily opening review" at page route `/reviews/daily/open` and Section
+   9.3 a "Daily close review" at `/reviews/daily/close` — but Appendix A defines only
+   one route, `/reviews/daily`, with no `/open` or `/close` children. Resolved (Phase
+   2) by combining both flows' required fields into one form on the single
+   `/reviews/daily` page rather than inventing the two sub-routes Section 9
+   describes. Same resolution pattern as issues 1 and 2 above: Appendix A wins on
+   the route itself, Section 9's content requirements are honored within it.
 
 ## Canonical Route Tree (Appendix A, verbatim)
 

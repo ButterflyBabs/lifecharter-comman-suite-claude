@@ -1,13 +1,25 @@
 # Migration and Deployment
 
-## Current Status (Phase 1)
+## Current Status (Phase 2)
 
 | Component | Status | Detail |
 |---|---|---|
-| GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`, `main` branch, Phase 1 commit `feb829d`. |
-| Vercel project | **Live and verified — build and runtime both confirmed** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`). Phase 1 build (`dpl_HfCUgn8bHJ5qXSJSoVNwMSSkVX9Y`) reached `READY`; confirmed `GET /command/today` unauthenticated redirects to `/login`, which renders a real sign-in form — route protection works in production. |
-| Supabase project | **26 tables live, RLS on all of them, zero advisor findings** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"). Tenancy/governance + unified work engine + notifications/assets from Section 10.3/10.4/10.9, 15 seeded system roles, 18 seeded permissions, 170 role-permission mappings. See [data-model.md](data-model.md) and [permissions-and-rls.md](permissions-and-rls.md). |
+| GitHub repo | **Pushed** | `ButterflyBabs/lifecharter-comman-suite-claude`, `main` branch, Phase 2 commit `c41b5f6` (after 4 build-fix commits — see Deployment History below). |
+| Vercel project | **Live and verified — build and runtime both confirmed** | `lifecharter-comman-suite-claude` (`prj_l1KLSEJ31ahgDPgmuKJ1t79eHG82`). Phase 2 build (`dpl_Chtw6cvP9wfutaREMrF7K4shv4KG`) reached `READY`; re-confirmed `GET /command/today` unauthenticated still redirects to `/login` after all the routing/schema changes. |
+| Supabase project | **45 tables live, RLS on all of them, zero advisor findings** | `itxfgxmdyqpcytmgdysa` ("LifeCharter Command Dashboard"). Phase 1's 26 tables plus Phase 2's 19 (audit, roadmap/gates, review center). See [data-model.md](data-model.md) and [permissions-and-rls.md](permissions-and-rls.md). |
 | Local repo | Initialized, pushed | `git init -b main`, `origin` set to the GitHub repo above. |
+
+## Phase 2 Migrations Applied
+
+| Migration | What it did |
+|---|---|
+| `20260704010000_phase2_domains_and_audit` | 6 tables (business_command_domains through audit_findings) + `audit_domain_scores` view, RLS on all 6, seeded 12 domains + 1 template + 24 questions. |
+| `20260704020000_phase2_roadmap_and_gates` | 8 tables (roadmap_templates through completion_evidence), RLS on all 8, the two gate-enforcement triggers, seeded 1 roadmap template. |
+| `20260704030000_phase2_review_center` | 4 tables (review_templates through review_findings), RLS on all 4, closed the Phase 1 `outcomes.review_instance_id` forward reference, seeded 6 cadence templates. |
+
+Same discipline as Phase 1: every migration followed by `get_advisors(type: security)`
+before moving on — zero findings this time (Phase 1's two findings had already taught
+the right patterns: pin `search_path`, revoke `EXECUTE` on trigger-only functions).
 
 ## Phase 1 Migrations Applied
 
@@ -214,3 +226,92 @@ Four of five criteria are fully met with real verification, not assumption. The
 fifth has the foundation built but lacks manual AT testing — worth doing before
 treating accessibility as solid, but not blocking enough to hold up Phase 2's start
 given the rest of Phase 1 is sound.
+
+## Deployment History (Phase 2)
+
+Four build-fix iterations, notably more than Phase 0 (two) or Phase 1 (zero) — Phase
+2 is the largest, most logic-heavy phase so far (schema + gate-enforcement triggers +
+setup wizard + audit scoring + roadmap generation + six-cadence review engine +
+Command Center), and it showed:
+
+1. **`dpl_AdbEDVPXBVriV1PJ15D9oG4594Q4` — failed.** Unescaped apostrophe in JSX text
+   (`react/no-unescaped-entities`) in Command Center's "today's review" link, and an
+   `eslint-disable-next-line` referencing `@typescript-eslint/no-explicit-any`, a
+   rule not registered in this project's ESLint config (Next treats unknown rule
+   names in disable comments as errors). Fixed both.
+2. **`dpl_BfG7iSX1Pcu8WTKnyaykucHX4j6X` — failed.** `typedRoutes` (an experimental
+   flag enabled in Phase 0 without strong justification) rejected a computed
+   `string` prop passed to `<Link href>` in `CommandCadencePage` — a completely
+   normal shared-component pattern. Disabled the experimental flag rather than
+   restructuring working code around it.
+3. **`dpl_7uACGQtoQ9pokA668N9Vb6NiDJ1L` — failed.** `noUncheckedIndexedAccess` (a
+   real strict-mode setting from Phase 0, kept) flagged `Record<string, T>` and
+   `array[i]` indexed reads in `lib/reviews/actions.ts` and `lib/roadmap/generate.ts`
+   as possibly `undefined` — TypeScript can't track prior assignment through
+   computed keys or loop counters. Fixed with a `?? []` fallback and a
+   `for...of .entries()` loop instead of indexed access.
+4. **`dpl_Chtw6cvP9wfutaREMrF7K4shv4KG` — `READY`.** Re-confirmed
+   `GET /command/today` unauthenticated still redirects to `/login` correctly after
+   all the schema and routing changes — regression check, not just a fresh feature
+   check.
+
+Every failure was a genuine compile-time catch (verified by reading the actual error
+message from `get_deployment_build_logs`, never guessed at), consistent with treating
+Vercel's build as the real verification step since no local Node runtime exists in
+the execution sandbox.
+
+## Next Steps to Close Phase 2
+
+- [x] Design and apply the audit schema (domains, templates, questions, instances,
+  responses, findings) with RLS and the independent build/health scoring view.
+- [x] Design and apply the roadmap/gates schema with RLS and two triggered
+  gate-enforcement rules.
+- [x] Design and apply the review center schema with RLS, seeded for all six
+  cadences, and close the Phase 1 `outcomes.review_instance_id` forward reference.
+- [x] Prove gate enforcement (blocking and unblocking cases) with a real,
+  transaction-wrapped SQL test.
+- [x] Prove the setup wizard's service-role bootstrap produces RLS-recognized
+  ownership, not just rows.
+- [x] Build the setup wizard, Business Command Audit UI, roadmap generation and UI,
+  six-cadence Review Center, and Command Center v1.
+- [x] Push, fix all real build errors (four iterations), confirm the build passes
+  and route protection still works at the live URL.
+- [ ] Exercise the actual UI flows with a real browser or user — setup wizard →
+  audit → roadmap → review completion → Command Center, end to end. Not done this
+  phase; everything is verified at the SQL and build/runtime layers only.
+- [ ] Wire the SQL tests into automated CI (same gap as Phase 1).
+- [ ] Manual assistive-technology pass (same gap as Phase 1, now covering more
+  pages).
+
+**Phase 2 acceptance criteria (Section 18):**
+
+- [x] **A new workspace can complete setup and receive a prioritized roadmap** —
+  the setup wizard creates a real workspace + membership + Workspace Owner role
+  (verified by SQL test), and completing the Business Command Audit generates a
+  real `roadmap_instances` row with phases sequenced lowest-scoring-domain-first.
+  Not yet verified: clicking through this flow in a real browser.
+- [x] **The system prevents progression when a blocking gate is incomplete** —
+  proven with a real SQL test: a milestone can't be marked done without approved
+  evidence, a phase can't be marked complete with incomplete milestones, and both
+  work correctly once satisfied.
+- [x] **Audit Build Completion and Operating Health are scored independently** —
+  `audit_domain_scores` computes both from separate question categories via a
+  `filter (where score_category = ...)` aggregate; confirmed 12 build-completion and
+  12 operating-health questions exist (24 total, verified by direct query).
+- [~] **A completed review produces approved outcomes, tasks, decisions, and
+  roadmap updates** — `lib/reviews/actions.ts` creates real `outcomes`, `decisions`,
+  `blockers`, and `review_findings` rows based on each template's
+  `output_rules_json`, and quarterly reviews add priorities directly to the active
+  roadmap phase. The code typechecks cleanly (Vercel's build confirms this) but has
+  **not been executed** — no form was actually submitted through the UI. Marked
+  partial rather than fully checked off.
+- [~] **The Command Center shows only relevant, permission-safe information** —
+  `/command/today` queries are scoped by `workspace_id` (RLS-enforced) and change
+  emphasis based on Build/Run mode; not yet verified is what it actually looks like
+  rendered with real data behind an authenticated session, since no test user has
+  been created and driven through the UI.
+
+Three of five criteria are fully verified with real tests; two are implemented and
+typecheck cleanly but haven't been exercised end-to-end through the actual UI. This
+is a meaningfully lower verification bar than Phase 1 hit, and worth closing before
+Phase 3 adds still more surface area on top.

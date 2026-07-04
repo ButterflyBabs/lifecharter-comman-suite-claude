@@ -5,26 +5,32 @@ Section 10 of the Master Product Restructure Specification. This document is the
 source of truth for schema design; no table should be created that isn't listed here
 (or a documented, approved addition to it).
 
-**Status as of Phase 1:** 26 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
-Level Security enabled and zero security-advisor findings. This is the full 10.3
-(Tenancy, Identity, and Governance) and 10.9 subset (notifications, assets, templates),
-plus the 10.4 subset that makes up the unified work engine (tasks, task_dependencies,
-outcomes, decisions, approvals, blockers, comments). Migrations live in
+**Status as of Phase 2:** 45 tables are live in `itxfgxmdyqpcytmgdysa`, all with Row
+Level Security enabled and zero security-advisor findings. This is the full 10.3, the
+10.4 objects Phases 1 and 2 together require, and the 10.9 subset needed for
+notifications, assets, templates, and reviews. Migrations live in
 `supabase/migrations/`, applied via the Supabase MCP connector and tracked in Supabase's
 own migration history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
 
-Built in Phase 1 (10.3 + 10.9 subset + 10.4 subset):
+Built in Phase 1 (26 tables — 10.3 + 10.9 subset + 10.4 work-engine subset):
 `workspaces`, `business_units`, `user_profiles`, `workspace_members`, `roles`,
 `permissions`, `role_permissions`, `member_roles`, `audit_events`, `activity_events`,
 `tasks`, `task_dependencies`, `outcomes`, `decisions`, `approvals`, `blockers`,
 `comments`, `notifications`, `notification_preferences`, `assets`, `asset_versions`,
 `folders`, `tags`, `asset_tags`, `templates`, `template_versions`.
 
-Not yet built (remaining 10.4 roadmap/audit/gate objects, and all of 10.5 through
-10.9's revenue/client/ops/AI objects) — these land in Phases 2 through 7 per the
-build order (Section 18), each phase adding only the objects its acceptance criteria
-actually require.
+Built in Phase 2 (19 tables — the rest of 10.4, plus the 10.9 review objects):
+`business_command_domains`, `audit_templates`, `audit_questions`, `audit_instances`,
+`audit_responses`, `audit_findings` (plus the `audit_domain_scores` view),
+`roadmap_templates`, `roadmap_instances`, `roadmap_phases`, `roadmap_milestones`,
+`milestone_dependencies`, `stage_gates`, `gate_requirements`, `completion_evidence`,
+`review_templates`, `review_instances`, `review_responses`, `review_findings`.
+
+Not yet built (all of 10.5 through 10.8's business-architecture/revenue/client/ops
+objects, and 10.9's `kpis`/`kpi_values`/`ai_*`/`prompt_*` objects) — these land in
+Phases 3 through 7 per the build order (Section 18), each phase adding only the
+objects its acceptance criteria actually require.
 
 ## 10.1 Data Architecture Principles
 
@@ -341,3 +347,45 @@ they are not repeated in every row.
   workspace switching is a near-term follow-up, not deferred to a specific later
   phase, since it's needed as soon as more than one workspace/user exists in
   practice.
+
+## Assumptions Recorded in Phase 2
+
+- **`audit_questions.score_category` (`build_completion` | `operating_health`) is an
+  addition beyond the spec's literal minimum fields** for that table. Section 9.6
+  names the two independent measures used to reassess a domain but doesn't specify
+  the mechanism connecting a question to one of them — this column is that
+  mechanism, and `audit_domain_scores` (a view, not a stored/duplicated column)
+  aggregates responses per domain per category.
+- **`business_command_domains`, `audit_templates`, `audit_questions`,
+  `roadmap_templates`, and `review_templates` are treated as global reference data**
+  (no `workspace_id`), consistent with the spec listing no `workspace_id` in their
+  minimum fields — they're shared framework/template content, not per-tenant rows.
+  Everything generated *from* them per workspace (`audit_instances`,
+  `roadmap_instances`, `review_instances`, and everything under them) is tenant-owned
+  as usual.
+- **Gate enforcement is two concrete triggered rules, not a generic rule
+  interpreter.** The spec's `gate_requirements.validation_rule` (jsonb) implies an
+  arbitrarily flexible rule language, but nothing in the spec defines that language.
+  Phase 2 implements exactly the two rules it needs — a milestone requires approved
+  `completion_evidence` before it can be marked done; a phase requires all its
+  milestones done before it can be marked complete — enforced by database triggers
+  (`enforce_milestone_gate`, `enforce_phase_gate`), verified with a real,
+  transaction-wrapped SQL test proving both the blocking and unblocking cases
+  (`supabase/tests/roadmap_gate_enforcement.sql`). A generic rule interpreter is a
+  reasonable later refinement once more requirement types are actually needed.
+- **`review_templates` are self-describing** (`questions_json`/`output_rules_json`)
+  rather than driving six hardcoded per-cadence code paths — matching Section 9.9's
+  own framing that "every review template must define... required questions,
+  required outputs... resulting tasks, decisions, and roadmap updates." One generic
+  form component and one generic completion action serve all six cadences.
+- **Quarterly review completion both launches a new `audit_instances` row and adds
+  its "quarterly priorities" outcomes directly as `roadmap_milestones` in the
+  roadmap's current active phase** — the concrete interpretation of Section 9.6
+  tying the quarterly review to the twelve-domain reassessment and Section 18's
+  "roadmap updates" acceptance-criterion language, rather than a vaguer activity-log
+  entry.
+- **Evidence approval is self-approval in Phase 2.** Whoever submits
+  `completion_evidence` is recorded as its own `approved_by`. A separate
+  approval step (someone other than the submitter reviewing evidence) is a
+  reasonable later refinement once delivery/review roles exist to make that
+  distinction meaningful — Phase 2 has no such role structure yet.
