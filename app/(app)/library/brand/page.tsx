@@ -1,10 +1,12 @@
+import { AssetLibrarySection } from "@/components/library/AssetLibrarySection";
+
 export default function Page() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Brand</h1>
-      <p className="mt-2 text-sm text-soft-taupe">Route: /library/brand</p>
-      <p className="mt-4 text-sm">Scaffolded in Phase 0. Module implementation follows the build
-      order in Section 18 of the Master Product Restructure Specification.</p>
-    </div>
+    <AssetLibrarySection
+      assetType="brand"
+      libraryPath="/library/brand"
+      title="Brand Library"
+      description="Logos, style guides, and brand board reference files. For brand voice, message pillars, and claim rules, see Architecture -> Brand."
+    />
   );
 }
