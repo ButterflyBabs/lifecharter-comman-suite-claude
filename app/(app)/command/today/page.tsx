@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { getMode } from "@/lib/mode/actions";
+import { StatTile } from "@/components/ui";
 
 export default async function CommandTodayPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -123,15 +124,9 @@ export default async function CommandTodayPage() {
       )}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded border border-soft-taupe/40 p-3 text-sm">
-          <p className="text-2xl font-semibold text-deep-indigo">{blockers?.length ?? 0}</p>
-          <p className="text-soft-taupe">Active blockers</p>
-        </div>
-        <div className="rounded border border-soft-taupe/40 p-3 text-sm">
-          <p className="text-2xl font-semibold text-deep-indigo">{pendingApprovals ?? 0}</p>
-          <p className="text-soft-taupe">Pending approvals</p>
-        </div>
-        <div className="rounded border border-soft-taupe/40 p-3 text-sm">
+        <StatTile value={blockers?.length ?? 0} label="Active blockers" />
+        <StatTile value={pendingApprovals ?? 0} label="Pending approvals" />
+        <div className="lc-card flex items-center p-4 text-sm">
           <Link href="/reviews/daily" className="text-deep-indigo underline">
             Open today&apos;s review
           </Link>
