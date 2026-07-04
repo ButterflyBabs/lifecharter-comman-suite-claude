@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
@@ -17,13 +18,20 @@ export default async function PortalPage() {
 
   const supabase = await createClient();
 
-  const [{ data: access }, { data: contacts }, { data: clients }] = await Promise.all([
+  const [{ data: access }, { data: contacts }, { data: clients }, { data: workspace }] = await Promise.all([
     supabase.from("client_portal_access").select("id, status, invited_at, last_login_at, clients(organizations(name))").eq("workspace_id", workspaceId).order("invited_at", { ascending: false }),
     supabase.from("client_contacts").select("id, role, portal_access, client_id, people(preferred_name, first_name, last_name)").eq("workspace_id", workspaceId),
     supabase.from("clients").select("id, organizations(name)").eq("workspace_id", workspaceId),
+    supabase
+      .from("workspaces")
+      .select("name, client_portal_display_name, client_portal_logo_url, client_portal_primary_color")
+      .eq("id", workspaceId)
+      .single(),
   ]);
 
   const orgName = (c: { organizations: unknown } | null) => (c?.organizations as { name: string } | null)?.name ?? "Untitled client";
+  const brandName = workspace?.client_portal_display_name || workspace?.name || "Your workspace";
+  const brandColor = workspace?.client_portal_primary_color || undefined;
 
   return (
     <div className="p-8">
@@ -31,6 +39,31 @@ export default async function PortalPage() {
         title="Client Portal Settings"
         description="Grant, suspend, and reactivate portal access for client contacts."
       />
+
+      <Card className="mb-6">
+        <h2 className="text-sm font-semibold text-deep-indigo">Branding preview</h2>
+        <div
+          className="mt-2 flex items-center gap-3 rounded border border-[var(--card-border)] p-4"
+          style={brandColor ? { borderColor: brandColor } : undefined}
+        >
+          {workspace?.client_portal_logo_url && (
+            <div
+              aria-hidden="true"
+              className="h-10 w-10 shrink-0 rounded bg-cover bg-center"
+              style={{ backgroundImage: `url(${workspace.client_portal_logo_url})` }}
+            />
+          )}
+          <p className="text-lg font-semibold" style={brandColor ? { color: brandColor } : undefined}>
+            {brandName}
+          </p>
+        </div>
+        <p className="mt-2 text-xs text-soft-taupe">
+          This is how your logo, display name, and color would appear to clients (set on{" "}
+          <Link href="/settings/workspace" className="text-deep-indigo underline">Settings &rarr; Workspace</Link>).
+          This build doesn&apos;t yet have a dedicated client-facing portal view for a client to actually
+          sign in and see it — only this coach-facing management page exists so far.
+        </p>
+      </Card>
 
       <section>
         <h2 className="text-lg font-semibold text-deep-indigo">Portal access</h2>
