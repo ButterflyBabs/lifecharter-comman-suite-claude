@@ -60,8 +60,15 @@ begin
   select count(*) into v_count from public.tasks where title = 'Tenant B secret task';
   if v_count <> 0 then raise exception 'FAIL 3: tenant A can see tenant B task by direct query'; end if;
 
-  select count(*) into v_count from public.audit_events;
-  if v_count <> 1 then raise exception 'FAIL 4: tenant A owner sees % audit events (expected 1)', v_count; end if;
+  -- Not count(*): the workspace_members/member_roles inserts above also
+  -- fire the Phase 1 audit triggers (audit_workspace_members,
+  -- audit_member_roles), which legitimately add their own audit_events
+  -- rows for workspace A. This checks specifically that the owner can
+  -- read the explicit synthetic event inserted above, not an incidental
+  -- total that would break again if more triggers are added later.
+  select count(*) into v_count from public.audit_events
+  where action = 'test.action' and resource_type = 'test';
+  if v_count <> 1 then raise exception 'FAIL 4: tenant A owner sees % of the test audit event (expected 1)', v_count; end if;
 end $$;
 
 -- Tenant B (no elevated role)
