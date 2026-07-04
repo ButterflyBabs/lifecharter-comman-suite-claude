@@ -5,14 +5,23 @@ const STATUS_TONE: Record<string, Tone> = {
   complete: "success",
   completed: "success",
   approved: "success",
+  achieved: "success",
+  granted: "success",
   active: "warning",
   in_progress: "warning",
   pending: "warning",
   open: "warning",
+  restricted: "warning",
   cancelled: "error",
   rejected: "error",
   blocked: "error",
+  missed: "error",
+  abandoned: "error",
+  prohibited: "error",
+  revoked: "error",
+  retired: "error",
   not_started: "neutral",
+  draft: "neutral",
 };
 
 export function StatusBadge({ status, tone }: { status: string; tone?: Tone }) {
