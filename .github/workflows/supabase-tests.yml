@@ -1,0 +1,55 @@
+name: Supabase SQL tests
+
+# Every prior phase of this build ran its RLS/security SQL tests
+# manually via the Supabase MCP connector, a gap flagged honestly in
+# docs/testing.md at the end of every single phase. This workflow closes
+# it: a real local Supabase stack (Postgres + the auth schema helpers
+# every test relies on, e.g. auth.uid() reading request.jwt.claims),
+# migrations applied from scratch, then every file in supabase/tests/
+# executed with ON_ERROR_STOP so a RAISE EXCEPTION inside any test's
+# do $$ ... $$ block fails the job. All 20 existing test files already
+# end in `rollback`, so they're safe to run back-to-back against one
+# shared database without cross-file interference.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sql-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: supabase start --ignore-health-check
+
+      - name: Apply every migration from scratch
+        run: supabase db reset
+
+      - name: Run every SQL test file
+        run: |
+          set -e
+          DB_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          shopt -s nullglob
+          files=(supabase/tests/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No test files found under supabase/tests/ — nothing to run."
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            echo "::group::$f"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop
