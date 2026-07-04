@@ -14,6 +14,7 @@ export async function addLead(formData: FormData) {
     workspace_id: workspaceId,
     person_id: (formData.get("person_id") as string) || null,
     organization_id: (formData.get("organization_id") as string) || null,
+    business_unit_id: (formData.get("business_unit_id") as string) || null,
     pathway: (formData.get("pathway") as string) || null,
     qualification_rationale: formData.get("qualification_rationale") as string,
     outreach_angle: formData.get("outreach_angle") as string,

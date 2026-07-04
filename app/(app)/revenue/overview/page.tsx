@@ -15,7 +15,12 @@ import {
   IconCalendar,
 } from "@/components/ui";
 
-export default async function RevenueOverviewPage() {
+export default async function RevenueOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ business_unit?: string }>;
+}) {
+  const { business_unit: businessUnitFilter } = await searchParams;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
@@ -29,6 +34,18 @@ export default async function RevenueOverviewPage() {
 
   const supabase = await createClient();
 
+  let newLeadsQuery = supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "new");
+  let qualifiedLeadsQuery = supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "qualified");
+  let openOpportunitiesQuery = supabase.from("opportunities").select("id, expected_value, weighted_value").eq("workspace_id", workspaceId).eq("status", "open");
+  let unpaidInvoicesQuery = supabase.from("invoices").select("id, amount_due, status").eq("workspace_id", workspaceId).neq("status", "paid");
+
+  if (businessUnitFilter) {
+    newLeadsQuery = newLeadsQuery.eq("business_unit_id", businessUnitFilter);
+    qualifiedLeadsQuery = qualifiedLeadsQuery.eq("business_unit_id", businessUnitFilter);
+    openOpportunitiesQuery = openOpportunitiesQuery.eq("business_unit_id", businessUnitFilter);
+    unpaidInvoicesQuery = unpaidInvoicesQuery.eq("business_unit_id", businessUnitFilter);
+  }
+
   const [
     { count: newLeadsCount },
     { count: qualifiedLeadsCount },
@@ -37,14 +54,16 @@ export default async function RevenueOverviewPage() {
     { count: contractsNeedingAction },
     { data: unpaidInvoices },
     { data: latestForecast },
+    { data: businessUnits },
   ] = await Promise.all([
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "new"),
-    supabase.from("leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "qualified"),
-    supabase.from("opportunities").select("id, expected_value, weighted_value").eq("workspace_id", workspaceId).eq("status", "open"),
+    newLeadsQuery,
+    qualifiedLeadsQuery,
+    openOpportunitiesQuery,
     supabase.from("proposals").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", ["draft", "sent", "viewed"]),
     supabase.from("contracts").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", ["draft", "sent"]),
-    supabase.from("invoices").select("id, amount_due, status").eq("workspace_id", workspaceId).neq("status", "paid"),
+    unpaidInvoicesQuery,
     supabase.from("revenue_forecasts").select("id, period, scenario").eq("workspace_id", workspaceId).order("generated_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
   ]);
 
   const pipelineValue = (openOpportunities ?? []).reduce((sum, o) => sum + Number(o.expected_value ?? 0), 0);
@@ -57,6 +76,24 @@ export default async function RevenueOverviewPage() {
         title="Revenue Overview"
         description="One view of demand, pipeline, contracts, cash, forecast, attribution, and action queues."
       />
+
+      {businessUnits && businessUnits.length > 0 && (
+        <form method="get" className="mt-4 flex items-center gap-2 text-sm">
+          <label htmlFor="business_unit" className="text-soft-taupe">Business unit</label>
+          <select
+            id="business_unit"
+            name="business_unit"
+            defaultValue={businessUnitFilter ?? ""}
+            className="rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm"
+          >
+            <option value="">All (leads, opportunities, invoices)</option>
+            {businessUnits.map((bu) => (
+              <option key={bu.id} value={bu.id}>{bu.name}</option>
+            ))}
+          </select>
+          <button type="submit" className="lc-btn-secondary text-xs">Filter</button>
+        </form>
+      )}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile value={newLeadsCount ?? 0} label="New leads" icon={<IconTrendingUp />} />

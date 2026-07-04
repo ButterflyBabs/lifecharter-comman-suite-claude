@@ -54,15 +54,16 @@ export default async function PipelinePage() {
     );
   }
 
-  const [{ data: stages }, { data: organizations }, { data: offers }] = await Promise.all([
+  const [{ data: stages }, { data: organizations }, { data: offers }, { data: businessUnits }] = await Promise.all([
     supabase.from("pipeline_stages").select("id, name, sequence").eq("pipeline_id", pipeline.id).order("sequence"),
     supabase.from("organizations").select("id, name").eq("workspace_id", workspaceId),
     supabase.from("offers").select("id, name").eq("workspace_id", workspaceId),
+    supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
   ]);
 
   const { data: opportunities } = await supabase
     .from("opportunities")
-    .select("id, name, stage_id, expected_value, target_close_date, status, organizations(name)")
+    .select("id, name, stage_id, expected_value, target_close_date, status, organizations(name), business_units(name)")
     .eq("pipeline_id", pipeline.id)
     .eq("status", "open")
     .order("created_at", { ascending: false });
@@ -93,6 +94,9 @@ export default async function PipelinePage() {
                     {(o.organizations as unknown as { name: string } | null)?.name ?? "—"}
                     {o.expected_value ? ` · $${o.expected_value}` : ""}
                     {o.target_close_date ? ` · closes ${o.target_close_date}` : ""}
+                    {(o.business_units as unknown as { name: string } | null)?.name
+                      ? ` · ${(o.business_units as unknown as { name: string }).name}`
+                      : ""}
                   </p>
                   <form action={moveOpportunityStage} className="mt-1 flex items-center gap-2">
                     <input type="hidden" name="opportunity_id" value={o.id} />
@@ -138,6 +142,14 @@ export default async function PipelinePage() {
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
+          {businessUnits && businessUnits.length > 0 && (
+            <select name="business_unit_id" defaultValue="" className="w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm">
+              <option value="">No business unit</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>{bu.name}</option>
+              ))}
+            </select>
+          )}
           <select name="stage_id" required className="w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm">
             {stages?.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>

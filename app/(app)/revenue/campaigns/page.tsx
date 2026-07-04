@@ -17,14 +17,15 @@ export default async function CampaignsPage() {
 
   const supabase = await createClient();
 
-  const [{ data: campaigns }, { data: offers }] = await Promise.all([
+  const [{ data: campaigns }, { data: offers }, { data: businessUnits }] = await Promise.all([
     supabase
       .from("campaigns")
-      .select("id, name, objective, status, budget, launch_approved_at, scheduled_close_review_at, tracking_code")
+      .select("id, name, objective, status, budget, launch_approved_at, scheduled_close_review_at, tracking_code, business_units(name)")
       .eq("workspace_id", workspaceId)
       .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase.from("offers").select("id, name").eq("workspace_id", workspaceId),
+    supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
   ]);
 
   return (
@@ -47,6 +48,9 @@ export default async function CampaignsPage() {
                   </div>
                   <p className="text-soft-taupe">
                     {c.objective ?? "—"} {c.budget ? `· budget $${c.budget}` : ""}
+                    {(c.business_units as unknown as { name: string } | null)?.name
+                      ? ` · ${(c.business_units as unknown as { name: string }).name}`
+                      : ""}
                   </p>
                   <p className="mt-1 text-xs text-soft-taupe">
                     {gateSatisfied ? "Launch gate satisfied" : "Launch gate not yet satisfied (objective, tracking, approval, close review)"}
@@ -77,6 +81,14 @@ export default async function CampaignsPage() {
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
+          {businessUnits && businessUnits.length > 0 && (
+            <select name="business_unit_id" defaultValue="" className="w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm">
+              <option value="">No business unit</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>{bu.name}</option>
+              ))}
+            </select>
+          )}
           <input type="text" name="cta" placeholder="Call to action" className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />
           <div className="grid grid-cols-2 gap-2">
             <input type="date" name="start_at" className="rounded border border-soft-taupe px-3 py-2 text-sm" />

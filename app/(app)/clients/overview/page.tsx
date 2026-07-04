@@ -16,7 +16,12 @@ import {
 } from "@/components/ui";
 import { addClient } from "./actions";
 
-export default async function ClientsOverviewPage() {
+export default async function ClientsOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ business_unit?: string }>;
+}) {
+  const { business_unit: businessUnitFilter } = await searchParams;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
@@ -31,30 +36,36 @@ export default async function ClientsOverviewPage() {
   const supabase = await createClient();
 
   const [
-    { data: clients },
+    { data: allClients },
     { count: openSupportRequests },
     { data: latestHealth },
     { data: organizations },
+    { data: businessUnits },
   ] = await Promise.all([
     supabase
       .from("clients")
-      .select("id, status, start_at, organizations(name), people(preferred_name, first_name, last_name)")
+      .select("id, status, start_at, business_unit_id, organizations(name), people(preferred_name, first_name, last_name), business_units(name)")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
     supabase.from("support_requests").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", ["open", "in_progress"]),
     supabase.from("client_health_events").select("client_id, status, calculated_at").eq("workspace_id", workspaceId).order("calculated_at", { ascending: false }),
     supabase.from("organizations").select("id, name").eq("workspace_id", workspaceId),
+    supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
   ]);
+
+  const clients = businessUnitFilter
+    ? (allClients ?? []).filter((c) => c.business_unit_id === businessUnitFilter)
+    : (allClients ?? []);
 
   const latestHealthByClient = new Map<string, string>();
   for (const h of latestHealth ?? []) {
     if (!latestHealthByClient.has(h.client_id)) latestHealthByClient.set(h.client_id, h.status);
   }
 
-  const total = clients?.length ?? 0;
-  const active = (clients ?? []).filter((c) => c.status === "active").length;
-  const onboarding = (clients ?? []).filter((c) => c.status === "onboarding").length;
-  const atRisk = [...latestHealthByClient.values()].filter((s) => s === "at_risk").length;
+  const total = clients.length;
+  const active = clients.filter((c) => c.status === "active").length;
+  const onboarding = clients.filter((c) => c.status === "onboarding").length;
+  const atRisk = clients.filter((c) => latestHealthByClient.get(c.id) === "at_risk").length;
 
   const clientLabel = (c: NonNullable<typeof clients>[number]) => {
     const org = (c.organizations as unknown as { name: string } | null)?.name;
@@ -102,11 +113,28 @@ export default async function ClientsOverviewPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
-          <IconBadge size="sm"><IconUsers /></IconBadge>
-          Clients
-        </h2>
-        {clients && clients.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+            <IconBadge size="sm"><IconUsers /></IconBadge>
+            Clients
+          </h2>
+          {businessUnits && businessUnits.length > 0 && (
+            <form method="get" className="flex items-center gap-2 text-sm">
+              <select
+                name="business_unit"
+                defaultValue={businessUnitFilter ?? ""}
+                className="rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm"
+              >
+                <option value="">All business units</option>
+                {businessUnits.map((bu) => (
+                  <option key={bu.id} value={bu.id}>{bu.name}</option>
+                ))}
+              </select>
+              <button type="submit" className="lc-btn-secondary text-xs">Filter</button>
+            </form>
+          )}
+        </div>
+        {clients.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {clients.map((c) => (
               <li key={c.id}>
@@ -114,7 +142,12 @@ export default async function ClientsOverviewPage() {
                   <Card className="flex items-center justify-between text-sm">
                     <div>
                       <p className="font-medium text-deep-indigo">{clientLabel(c)}</p>
-                      <p className="text-soft-taupe">Since {new Date(c.start_at).toLocaleDateString()}</p>
+                      <p className="text-soft-taupe">
+                        Since {new Date(c.start_at).toLocaleDateString()}
+                        {(c.business_units as unknown as { name: string } | null)?.name
+                          ? ` · ${(c.business_units as unknown as { name: string }).name}`
+                          : ""}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {latestHealthByClient.get(c.id) && <StatusBadge status={latestHealthByClient.get(c.id)!} />}
@@ -139,6 +172,14 @@ export default async function ClientsOverviewPage() {
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
+          {businessUnits && businessUnits.length > 0 && (
+            <select name="business_unit_id" defaultValue="" className="w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm">
+              <option value="">No business unit</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>{bu.name}</option>
+              ))}
+            </select>
+          )}
           <input type="text" name="source_opportunity_id" placeholder="Source opportunity ID (optional)" className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />
           <button type="submit" className="lc-btn-primary">Add client</button>
         </form>

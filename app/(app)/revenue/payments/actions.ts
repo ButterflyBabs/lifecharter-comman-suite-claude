@@ -28,9 +28,21 @@ export async function createOrder(formData: FormData) {
     return;
   }
 
+  const opportunityId = (formData.get("opportunity_id") as string) || null;
+  let businessUnitId: string | null = null;
+  if (opportunityId) {
+    const { data: opportunity } = await supabase
+      .from("opportunities")
+      .select("business_unit_id")
+      .eq("id", opportunityId)
+      .maybeSingle();
+    businessUnitId = opportunity?.business_unit_id ?? null;
+  }
+
   await supabase.from("invoices").insert({
     workspace_id: workspaceId,
     order_id: order.id,
+    business_unit_id: businessUnitId,
     invoice_number: `INV-${Date.now().toString(36).toUpperCase()}`,
     amount_due: total,
     due_at: (formData.get("due_at") as string) || null,

@@ -17,6 +17,7 @@ export async function createCampaign(formData: FormData) {
     objective: formData.get("objective") as string,
     audience: formData.get("audience") as string,
     offer_id: (formData.get("offer_id") as string) || null,
+    business_unit_id: (formData.get("business_unit_id") as string) || null,
     cta: formData.get("cta") as string,
     start_at: (formData.get("start_at") as string) || null,
     end_at: (formData.get("end_at") as string) || null,

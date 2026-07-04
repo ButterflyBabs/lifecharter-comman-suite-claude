@@ -17,15 +17,16 @@ export default async function OutreachPage() {
 
   const supabase = await createClient();
 
-  const [{ data: leads }, { data: people }, { data: organizations }] = await Promise.all([
+  const [{ data: leads }, { data: people }, { data: organizations }, { data: businessUnits }] = await Promise.all([
     supabase
       .from("leads")
-      .select("id, status, pathway, qualification_rationale, outreach_angle, next_action, people(preferred_name), organizations(name)")
+      .select("id, status, pathway, qualification_rationale, outreach_angle, next_action, people(preferred_name), organizations(name), business_units(name)")
       .eq("workspace_id", workspaceId)
       .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase.from("people").select("id, preferred_name").eq("workspace_id", workspaceId),
     supabase.from("organizations").select("id, name").eq("workspace_id", workspaceId),
+    supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
   ]);
 
   const leadIds = (leads ?? []).map((l) => l.id);
@@ -70,6 +71,9 @@ export default async function OutreachPage() {
                         (l.organizations as unknown as { name: string } | null)?.name ??
                         "Unnamed lead"}
                       {l.pathway ? ` · ${l.pathway.toUpperCase()}` : ""}
+                      {(l.business_units as unknown as { name: string } | null)?.name
+                        ? ` · ${(l.business_units as unknown as { name: string }).name}`
+                        : ""}
                     </p>
                     <StatusBadge status={l.status} />
                   </div>
@@ -148,6 +152,14 @@ export default async function OutreachPage() {
             <option value="b2c">B2C</option>
             <option value="partner">Partner</option>
           </select>
+          {businessUnits && businessUnits.length > 0 && (
+            <select name="business_unit_id" defaultValue="" className="w-full rounded border border-soft-taupe bg-ivory-light px-3 py-2 text-sm">
+              <option value="">No business unit</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>{bu.name}</option>
+              ))}
+            </select>
+          )}
           <textarea name="qualification_rationale" placeholder="Qualification rationale" rows={2} className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />
           <input type="text" name="outreach_angle" placeholder="Outreach angle" className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />
           <input type="text" name="next_action" placeholder="Next action" className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />

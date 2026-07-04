@@ -51,6 +51,7 @@ export async function addOpportunity(formData: FormData) {
     name: formData.get("name") as string,
     organization_id: (formData.get("organization_id") as string) || null,
     offer_id: (formData.get("offer_id") as string) || null,
+    business_unit_id: (formData.get("business_unit_id") as string) || null,
     pipeline_id: formData.get("pipeline_id") as string,
     stage_id: formData.get("stage_id") as string,
     expected_value: formData.get("expected_value") ? Number(formData.get("expected_value")) : null,

@@ -14,6 +14,7 @@ export async function addClient(formData: FormData) {
     workspace_id: workspaceId,
     organization_id: (formData.get("organization_id") as string) || null,
     source_opportunity_id: (formData.get("source_opportunity_id") as string) || null,
+    business_unit_id: (formData.get("business_unit_id") as string) || null,
     status: "onboarding",
   });
 
