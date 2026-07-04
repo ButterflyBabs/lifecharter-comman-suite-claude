@@ -1011,6 +1011,31 @@ code changed, so there was no Vercel build to verify — the one real bug
 was caught by the SQL test, not by anything a TypeScript/Next.js build
 would surface).
 
+## CI Test Status
+
+Every SQL test above had, until now, only ever been run manually via the
+Supabase MCP connector against the long-lived hosted project — a gap
+flagged honestly at the end of every phase. `.github/workflows/supabase-tests.yml`
+closes it: on every push/PR to `main`, it starts a local Supabase CLI
+stack, runs `supabase db reset` to apply all ~40 migrations from scratch,
+then executes every file in `supabase/tests/` in sequence with
+`ON_ERROR_STOP=1`.
+
+Replaying against a genuinely fresh (non-hosted-provisioned) Postgres
+surfaced two real, previously-invisible bugs on the first run: (1) none
+of this project's 178 tables had ever had an explicit `GRANT` statement
+— Supabase's hosted platform silently provisions base table/sequence
+grants on project creation, so RLS had always been a second layer on top
+of an invisible first one, fixed in
+`supabase/migrations/20260719030000_base_table_grants.sql`; and (2) a
+stale test fixture (`notification_generators.sql`) whose interactively-
+verified fix had never been saved back to disk. A third run caught a
+latent, pre-existing incorrect assertion in `rls_workspace_isolation.sql`
+(a blanket `count(*)` on `audit_events` that didn't account for its own
+setup legitimately firing the Phase 1 audit triggers) — a bug that had
+existed since Phase 1 and simply had never been exercised end-to-end
+before. All three are fixed; CI is green across all 20 test files.
+
 **Honestly not done yet, on top of every prior phase's carried-forward
 gaps:**
 

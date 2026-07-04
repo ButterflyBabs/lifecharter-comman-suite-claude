@@ -1780,3 +1780,21 @@ record. See Assumptions below.
   going forward hasn't been watched); no real workspace owner has
   exercised the actual request-then-wait-30-days-then-verify-it's-gone
   flow end to end.
+
+## Assumptions Recorded in the CI build
+
+- **No table in this schema has ever had an explicit `GRANT`** —
+  Supabase's hosted platform provisions base table/sequence privileges
+  for `authenticated`/`anon`/`service_role` automatically on project
+  creation, so RLS has always been a second layer of restriction on top
+  of an invisible first one. This was only discoverable by replaying
+  every migration against a genuinely fresh, non-hosted Postgres (the
+  new CI workflow's local Supabase CLI stack), and is now made explicit
+  in `supabase/migrations/20260719030000_base_table_grants.sql`, scoped
+  deliberately to `authenticated`/`service_role` tables and sequences
+  only — never `anon`, never functions, to avoid undoing this project's
+  individually-curated anon-grant revocations on specific RPCs.
+- **CI is additive, not a replacement for `get_advisors`** — the
+  workflow proves migrations replay cleanly from zero and that every SQL
+  test still passes; it doesn't check RLS-policy correctness beyond what
+  the tests already assert.
