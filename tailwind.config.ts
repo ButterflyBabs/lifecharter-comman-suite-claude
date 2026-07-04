@@ -5,6 +5,13 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        // Brand board Section 3: Cormorant Garamond for display/headings
+        // ("elegant classic serif"), Open Sans for body ("clean, readable
+        // sans"). Both loaded via next/font in app/layout.tsx.
+        display: ["var(--font-display)", "serif"],
+        sans: ["var(--font-body)", "sans-serif"],
+      },
       colors: {
         // Theme-aware (flip between light/dark in globals.css) — used for
         // page text, backgrounds, and secondary surfaces throughout the app.
@@ -15,10 +22,6 @@ const config: Config = {
         "warm-gold": "var(--warm-gold)",
         "ivory-light": "var(--ivory-light)",
         "soft-taupe": "var(--soft-taupe)",
-        // Stable across both themes — solid button fills and active-state
-        // surfaces need a consistent, always-legible-with-white-text color
-        // rather than flipping with the text/background palette above.
-        accent: "var(--accent)",
       },
     },
   },

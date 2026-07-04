@@ -146,7 +146,7 @@ export default async function AuditPage() {
 
         <button
           type="submit"
-          className="rounded bg-accent px-4 py-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          className="lc-btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
         >
           Submit audit and generate roadmap
         </button>

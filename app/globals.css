@@ -10,30 +10,282 @@
   --warm-gold: #d4af63;
   --ivory-light: #f6f1e8;
   --soft-taupe: #b9a9a9;
-  --accent: #1f315b;
+
+  --success: #4caf50;
+  --warning: #ff9800;
+  --error: #e74c3c;
+  /* Stable across both themes — the primary button is always a gold fill
+     (Section 3 of the brand board), which always needs dark ink, regardless
+     of which way --deep-indigo currently points. */
+  --ink-on-gold: #1f315b;
+
+  --page-bg: var(--ivory-light);
+  --card-bg: rgba(31, 49, 91, 0.04);
+  --card-bg-hover: rgba(31, 49, 91, 0.07);
+  --card-border: rgba(212, 175, 99, 0.35);
+  --card-border-hover: rgba(212, 175, 99, 0.55);
+  --surface-bg: #ffffff;
+  --text-muted: rgba(31, 49, 91, 0.6);
 }
 
 .dark {
-  --deep-indigo: #e8ecf5;
+  --deep-indigo: #f6f1e8;
   --royal-plum: #d9b8e8;
   --sacred-teal: #6fd0d8;
   --soft-lavender: #3a3350;
   --warm-gold: #e8c987;
   --ivory-light: #12121c;
   --soft-taupe: #9a97ab;
-  --accent: #3d5aa0;
+
+  --page-bg: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+  --card-bg: rgba(31, 49, 91, 0.4);
+  --card-bg-hover: rgba(31, 49, 91, 0.5);
+  --card-border: rgba(212, 175, 99, 0.18);
+  --card-border-hover: rgba(212, 175, 99, 0.35);
+  --surface-bg: rgba(31, 49, 91, 0.55);
+  --text-muted: rgba(246, 241, 232, 0.6);
 }
 
 body {
   color: var(--deep-indigo);
-  background: var(--ivory-light);
+  background: var(--page-bg);
+  background-attachment: fixed;
+  font-family: var(--font-body), sans-serif;
+}
+
+/* ============================================================
+   Brand components (Section 4/5 of the brand board: rounded
+   panels, thin gold outlines, circular icon badges, gold
+   connector lines). Real CSS classes rather than long Tailwind
+   utility chains repeated across ~30 files.
+   ============================================================ */
+
+.lc-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.lc-card-hover:hover {
+  background: var(--card-bg-hover);
+  border-color: var(--card-border-hover);
+  transform: translateY(-2px);
+}
+
+.lc-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(212, 175, 99, 0.14);
+  color: var(--warm-gold);
+  flex-shrink: 0;
+}
+
+.lc-title {
+  font-family: var(--font-display), serif;
+  font-weight: 700;
+  color: var(--deep-indigo);
+}
+
+.lc-title-hero {
+  font-family: var(--font-display), serif;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--deep-indigo), var(--warm-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  background: linear-gradient(135deg, var(--warm-gold), #c49b4a);
+  color: var(--ink-on-gold);
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.lc-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(212, 175, 99, 0.3);
+}
+
+.lc-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  background: transparent;
+  color: var(--deep-indigo);
+  border: 1px solid var(--card-border);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.lc-btn-secondary:hover {
+  background: var(--card-bg);
+  border-color: var(--card-border-hover);
+}
+
+.lc-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.lc-nav-link:hover {
+  background: rgba(212, 175, 99, 0.08);
+  color: var(--deep-indigo);
+}
+
+.lc-nav-link.active {
+  background: rgba(212, 175, 99, 0.12);
+  color: var(--warm-gold);
+  border-left-color: var(--warm-gold);
+  font-weight: 600;
+}
+
+/* Compact horizontal toggle (Build/Run, Light/Dark) — same gold-tint
+   language as .lc-nav-link.active, without a left-border accent that only
+   reads correctly in a vertical list. */
+.lc-toggle-pill {
+  padding: 6px 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.lc-toggle-pill:hover {
+  color: var(--deep-indigo);
+}
+
+.lc-toggle-pill.active {
+  background: rgba(212, 175, 99, 0.14);
+  color: var(--warm-gold);
+  font-weight: 600;
+}
+
+.lc-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.lc-badge-success {
+  background: rgba(76, 175, 80, 0.15);
+  color: var(--success);
+}
+
+.lc-badge-warning {
+  background: rgba(255, 152, 0, 0.15);
+  color: var(--warning);
+}
+
+.lc-badge-error {
+  background: rgba(231, 76, 60, 0.15);
+  color: var(--error);
+}
+
+.lc-badge-neutral {
+  background: rgba(212, 175, 99, 0.1);
+  color: var(--soft-taupe);
+}
+
+/* Pathway row (brand board Section 6: "Pathway Row Style") — a connected
+   sequence of circular gold-bordered nodes, used for the roadmap's ordered
+   phases. */
+.lc-pathway {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+}
+
+.lc-pathway-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 120px;
+  text-align: center;
+  position: relative;
+}
+
+.lc-pathway-connector {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, var(--warm-gold), var(--sacred-teal));
+  margin-top: 23px;
+  min-width: 24px;
+  opacity: 0.5;
+}
+
+.lc-pathway-dot {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), serif;
+  font-weight: 700;
+  font-size: 18px;
+  border: 2px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--soft-taupe);
+}
+
+.lc-pathway-node.active .lc-pathway-dot {
+  border-color: var(--warm-gold);
+  color: var(--warm-gold);
+  background: rgba(212, 175, 99, 0.12);
+}
+
+.lc-pathway-node.complete .lc-pathway-dot {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(76, 175, 80, 0.12);
 }
 
 /* Accessibility baseline (Section 16.1) */
 
-/* Visible on every interactive element, not just the ones that remembered to
-   add a Tailwind focus-visible utility — a global fallback so keyboard focus
-   is never invisible. */
 :focus-visible {
   outline: 2px solid var(--sacred-teal);
   outline-offset: 2px;
@@ -51,19 +303,17 @@ body {
 }
 
 @media (prefers-contrast: more) {
-  /* --accent intentionally untouched here: buttons pair it with a hardcoded
-     white label, and driving it to match --deep-indigo/--ivory-light's
-     inverted extremes would make dark-mode high-contrast buttons white text
-     on a white fill. */
   :root {
     --deep-indigo: #000000;
     --ivory-light: #ffffff;
     --soft-taupe: #333333;
+    --card-border: #000000;
   }
 
   .dark {
     --deep-indigo: #ffffff;
     --ivory-light: #000000;
     --soft-taupe: #cccccc;
+    --card-border: #ffffff;
   }
 }
