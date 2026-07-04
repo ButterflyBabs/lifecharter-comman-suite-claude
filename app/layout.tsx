@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { getTheme } from "@/lib/theme/actions";
+import { getAccessibilityPrefs } from "@/lib/accessibility/actions";
 
 // Brand board (Section 3, Typography): Cormorant Garamond as the "elegant
 // classic serif" for display/headings, Open Sans as the "clean, readable
@@ -30,9 +31,21 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const theme = await getTheme();
+  const a11y = await getAccessibilityPrefs();
+
+  const classes = [
+    cormorantGaramond.variable,
+    openSans.variable,
+    theme === "dark" ? "dark" : "",
+    a11y.reduce_motion ? "lc-reduce-motion" : "",
+    a11y.high_contrast ? "lc-high-contrast" : "",
+    a11y.large_text ? "lc-large-text" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <html lang="en" className={`${cormorantGaramond.variable} ${openSans.variable} ${theme === "dark" ? "dark" : ""}`}>
+    <html lang="en" className={classes}>
       <body>{children}</body>
     </html>
   );

@@ -317,3 +317,36 @@ body {
     --card-border: #ffffff;
   }
 }
+
+/* Manual overrides from /settings/accessibility (Section 5's Settings ->
+   Accessibility page) — same effect as the media queries above, but applied
+   regardless of OS-level preference, since not every user's OS setting
+   matches what they actually want inside this app. */
+
+.lc-reduce-motion,
+.lc-reduce-motion *,
+.lc-reduce-motion *::before,
+.lc-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.lc-high-contrast {
+  --deep-indigo: #000000;
+  --ivory-light: #ffffff;
+  --soft-taupe: #333333;
+  --card-border: #000000;
+}
+
+.lc-high-contrast.dark {
+  --deep-indigo: #ffffff;
+  --ivory-light: #000000;
+  --soft-taupe: #cccccc;
+  --card-border: #ffffff;
+}
+
+.lc-large-text {
+  font-size: 112.5%;
+}
