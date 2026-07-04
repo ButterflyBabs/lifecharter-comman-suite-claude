@@ -4,7 +4,12 @@ import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
 import { inviteContactToPortal, suspendPortalAccess, reactivatePortalAccess } from "./actions";
 
-export default async function PortalPage() {
+export default async function PortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
@@ -40,6 +45,12 @@ export default async function PortalPage() {
         description="Grant, suspend, and reactivate portal access for client contacts."
       />
 
+      {error && (
+        <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {decodeURIComponent(error)}
+        </p>
+      )}
+
       <Card className="mb-6">
         <h2 className="text-sm font-semibold text-deep-indigo">Branding preview</h2>
         <div
@@ -58,10 +69,9 @@ export default async function PortalPage() {
           </p>
         </div>
         <p className="mt-2 text-xs text-soft-taupe">
-          This is how your logo, display name, and color would appear to clients (set on{" "}
+          This is how your logo, display name, and color appear to clients (set on{" "}
           <Link href="/settings/workspace" className="text-deep-indigo underline">Settings &rarr; Workspace</Link>).
-          This build doesn&apos;t yet have a dedicated client-facing portal view for a client to actually
-          sign in and see it — only this coach-facing management page exists so far.
+          Clients see this at their own sign-in page once invited below.
         </p>
       </Card>
 
@@ -117,6 +127,7 @@ export default async function PortalPage() {
                 );
               })}
             </select>
+            <input type="email" name="email" placeholder="Client's email address" required className="w-full rounded border border-soft-taupe px-3 py-2 text-sm" />
             <button type="submit" className="lc-btn-primary">Invite</button>
           </form>
         </details>

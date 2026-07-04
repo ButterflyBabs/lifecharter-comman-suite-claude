@@ -33,6 +33,28 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname === "/login" || pathname === "/sign-up" || pathname.startsWith("/auth/");
+  const isPortalRoute = pathname.startsWith("/portal");
+  const isPortalAuthRoute = pathname === "/portal/login";
+
+  // Portal (client-facing) routes are a separate identity class from the
+  // workspace-member app — an unauthenticated visitor there goes to
+  // /portal/login, not the workspace-member /login, and a signed-in
+  // workspace member hitting /portal isn't redirected away from it either
+  // (whether they also happen to have portal access is a page-level check,
+  // not a middleware one — middleware only knows "is there any session").
+  if (isPortalRoute) {
+    if (!user && !isPortalAuthRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/portal/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+    if (user && isPortalAuthRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/portal";
+      return NextResponse.redirect(redirectUrl);
+    }
+    return response;
+  }
 
   if (!user && !isAuthRoute) {
     const redirectUrl = request.nextUrl.clone();
