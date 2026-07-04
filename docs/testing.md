@@ -796,7 +796,8 @@ gaps:**
   branding to a client** — `/clients/portal` remains the coach-facing
   management page it always was; this is a real, pre-existing gap
   surfaced (not created) by this work, flagged honestly rather than
-  expanded into scope to fix.
+  expanded into scope to fix. (Built since — see the Client Portal Test
+  Status section further below.)
 - **1 of Phase 8's 5 deferred items remained at this point**:
   multi-brand/multi-business enhancements. (Now built too — see the
   section below.)
@@ -846,3 +847,63 @@ gaps:**
   complete**: template marketplace, mobile/voice-first refinements,
   privacy-safe benchmarking, white-label workspace options, and
   multi-brand/multi-business enhancements.
+
+## Client Portal Test Status
+
+Built a real client-facing portal, closing the gap the white-label build
+surfaced but didn't fix: `client_portal_access` has carried a `user_id`
+column since Phase 5, but no login flow or client-facing page ever
+existed. Confirmed in scope with the user before building.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/client_portal.sql` (18 checks) — proves a portal user
+  (no `workspace_members` row at all) can read their own client's
+  `client_visible` `client_actions`, their own `deliverables` and
+  `client_milestones`, their own client-visible `client_metric_values`,
+  and their own client's session summaries via the
+  `client_portal_sessions` view and workspace branding via the
+  `client_portal_branding` view — but zero rows for a sibling client in
+  the same workspace, zero rows for another workspace entirely, and
+  (the check that actually justifies the security-definer views) zero
+  rows when querying the base `sessions` or `workspaces` tables directly,
+  proving the views are the only access path and `internal_notes` et al.
+  can never leak even via a direct API call. Also proves
+  `record_portal_login()` updates only the calling user's own row.
+
+**This build reached `READY` on the first deploy.**
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/portal/login` and
+  `/portal` have been verified at the SQL layer (all 18 checks above) and
+  the build/runtime layer (compiles; `/portal/login` returns the actual
+  login form at 200; `/portal` correctly redirects an unauthenticated
+  request to `/portal/login` rather than the workspace-member `/login`;
+  `/clients/portal` is confirmed unaffected, still redirecting to the
+  workspace-member `/login`), but no one has actually signed in as a
+  client, watched the dashboard render with real data, or clicked through
+  the sign-out flow.
+- **The portal is read-only in this pass** — a client can see their
+  actions, deliverables, milestones, and session summaries, but can't
+  mark anything complete or approve a deliverable from their side yet.
+  Adding writes safely would need either a policy narrow enough to avoid
+  reopening the `client_id`-pivot risk `record_portal_login()` was built
+  to avoid, or more narrow RPCs following the same pattern — deferred
+  rather than rushed.
+- **Client health status is intentionally excluded from the portal** —
+  `client_health_events` carries `signals_json`/`override_reason`, which
+  read as internal diagnostic detail; showing a client their own health
+  status at all is a real, separate scoping decision this pass didn't
+  make.
+- **The two security-definer views trip the security advisor's
+  `ERROR`-level check** — expected and verified safe (see
+  docs/permissions-and-rls.md's Client Portal paragraph for the full
+  reasoning): no policy grants a portal user the base `sessions` or
+  `workspaces` tables at all, so the view is the only path, and the
+  linter's own suggested fix (`security_invoker = true` + a base-table
+  policy) would be *less* safe here, not more, since it would expose
+  `internal_notes` to any direct API call bypassing the view.
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).

@@ -7,16 +7,23 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, the entire Settings section (Appendix A), and all 5 of Phase 8's
+Library + Search, the entire Settings section (Appendix A), all 5 of Phase 8's
 deferred items — the template marketplace, mobile/voice-first refinements,
 benchmarking with privacy-safe aggregation, white-label workspace options, and
-multi-brand/multi-business enhancements.** Every canonical route in the app is
-now built. 178 tables are live (multi-brand added columns and a trigger to
-existing tables, not a new one)
-in
-`itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
-security-advisor findings beyond one expected, by-design INFO finding (see
-Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
+multi-brand/multi-business enhancements — and a real client-facing portal**,
+closing the gap the white-label build honestly surfaced (no client had ever
+been able to sign in and see their own program). Every canonical route in the
+app is now built, plus the new `/portal` route tree for clients. 178 tables
+are live (multi-brand added columns and a trigger to existing tables; the
+client portal added no new table either — `client_portal_access` has existed
+since Phase 5 — only policies, two views, and one RPC) in
+`itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled. Security-advisor
+findings beyond the expected, by-design ones from earlier phases: two
+`ERROR`-level "security definer view" findings on `client_portal_sessions`
+and `client_portal_branding` (deliberate — see the client-portal assumptions
+below) and one more `WARN`-level self-validating-`SECURITY DEFINER`-function
+finding on `record_portal_login()` (same accepted shape as
+`increment_usage_counter` and friends). Phases 0-7 built the complete canonical object model
 — 10.3 through 10.9 in full. Phase 8 is Section 18's ninth stage,
 "Productization, scale, and ecosystem expansion" — the initial pass added
 subscription billing/entitlements, usage limits, and data export/deletion,
@@ -224,6 +231,35 @@ business-unit filter was added to `/clients/overview` and
 `/revenue/overview` (proposals and contracts aren't scoped — they don't
 carry `business_unit_id`). See Assumptions below. **Every item from Phase
 8's original 5-item deferred list is now complete.**
+
+**Also built: a real client-facing portal, closing the gap the white-label
+build surfaced but didn't fix.** `client_portal_access` has carried a
+`user_id` column since Phase 5, but no login flow or client-facing page
+ever existed — `/clients/portal` (Phase 5) has only ever been the
+coach-facing management page. Confirmed with the user before building.
+Portal users are a second identity class alongside workspace members:
+they authenticate through the same Supabase Auth but have no
+`workspace_members` row at all, so every existing "members can manage
+workspace X" policy already excludes them by construction — new policies
+are strictly additive. `client_actions` (gated by its existing
+`client_visible` column), `deliverables`, `client_milestones`, and
+`metrics`/`client_metric_values` (gated by `metrics.client_visible`) each
+get a new `SELECT` policy scoping a portal user to their own
+`client_portal_access` row. `sessions` and `workspaces` both carry
+coach-only columns (`internal_notes`/`agenda`/`preparation_brief`;
+`subscription_plan_id`/`status`/etc.) that a row-level policy would expose
+wholesale, so those go through two narrow views instead
+(`client_portal_sessions`, `client_portal_branding`) — the standard
+Postgres pattern for column-level security, since a view's own `SELECT`
+list determines its output columns regardless of what's on the
+underlying table. No new table for any of this; the two views and one new
+RPC (`record_portal_login()`, a narrow write scoped to the caller's own
+row rather than a blanket `UPDATE` policy that could let a client rewrite
+their own `client_id` and pivot into a sibling client's data) are the only
+new database objects. New route tree: `/portal/login` and `/portal`
+(dashboard: actions, deliverables, milestones, session summaries,
+branding), with `middleware.ts` treating `/portal` as a separate
+redirect track from the workspace-member app. See Assumptions below.
 
 ## 10.1 Data Architecture Principles
 
@@ -1510,3 +1546,85 @@ they are not repeated in every row.
   complete**: template marketplace, mobile/voice-first refinements,
   privacy-safe benchmarking, white-label workspace options, and
   multi-brand/multi-business enhancements.
+
+## Assumptions Recorded in the Client Portal build
+
+- **Confirmed in scope before building**: real client login (Supabase
+  Auth, same `inviteUserByEmail` pattern as workspace members), a separate
+  `/portal` route tree, and RLS scoping a client to their own
+  `client_visible` data. The alternative (skip this round) was offered
+  and declined.
+- **Portal users are a second identity class, not a workspace-member
+  variant** — they have no `workspace_members` row at all, so
+  `private.active_workspace_ids()` and every policy built on it already
+  excludes them without any change. New policies for this identity class
+  are additive grants keyed off `client_portal_access`, never a
+  modification to an existing policy.
+- **Two security-definer views for column-level security, not row
+  policies, on `sessions` and `workspaces`** — both tables carry columns
+  no client should ever see (`internal_notes`/`agenda`/
+  `preparation_brief` on sessions; `subscription_plan_id`/`status`/etc.
+  on workspaces) alongside columns they should
+  (`client_summary`/`client_portal_display_name` etc.). Postgres RLS is
+  row-level only, so a policy granting a client "their own session row"
+  would still return every column on it. A view's `SELECT` list is fixed
+  regardless of the underlying table's shape, so
+  `client_portal_sessions`/`client_portal_branding` are created with
+  default (non-`security_invoker`) semantics — they run with the view
+  owner's privileges, bypassing `sessions`/`workspaces`' RLS entirely —
+  and do their own `client_portal_access`-based scoping in the view's own
+  `WHERE` clause instead. This trips the security advisor's `ERROR`-level
+  "security definer view" check, which is a correct general heuristic
+  (these views really do bypass RLS) but not the right call here: the
+  *safer* alternative — `security_invoker = true` plus a matching row
+  policy on the base table — would require granting portal users a
+  policy on `sessions` itself, which would let them query
+  `/rest/v1/sessions` directly and receive `internal_notes` in full,
+  since RLS can't hide individual columns. No policy grants portal users
+  the base `sessions` or `workspaces` tables at all; the view is the only
+  access path, and it exposes only the safe columns.
+- **`record_portal_login()` is a narrow RPC, not a blanket `UPDATE`
+  policy** — a policy letting a portal user update their own
+  `client_portal_access` row would also let them rewrite `client_id` to a
+  different client in the *same* workspace, then use the read policies
+  above (all of which trust `client_portal_access.client_id`) to pivot
+  into that other client's actions, deliverables, milestones, and
+  sessions. The RPC only ever runs `update ... where user_id = auth.uid()`
+  internally, so there is no column a caller can influence beyond
+  `last_login_at` being set to `now()`.
+- **Sessions are only shown once they have a `client_summary`** — a
+  session with no summary yet (the coach hasn't written one) is filtered
+  out of `client_portal_sessions` entirely, rather than shown with an
+  empty summary field.
+- **The portal dashboard is read-only in this pass** — no action can be
+  marked complete, no deliverable approved, from the client side yet.
+  Adding writes would mean either a policy scoped narrowly enough to not
+  reopen the `client_id`-pivot risk above, or more narrow RPCs; deferred
+  rather than rushed.
+- **Client health status is intentionally excluded from the portal** —
+  `client_health_events` carries `signals_json`/`override_reason`, which
+  read as internal diagnostic detail rather than something to hand a
+  client directly; revisiting this needs its own scoping decision, not a
+  default inclusion.
+- **The existing coach-facing invite flow now creates a real user** —
+  `inviteContactToPortal` (`app/(app)/clients/portal/actions.ts`)
+  previously inserted a `client_portal_access` row with no `user_id` at
+  all; it now calls `admin.auth.admin.inviteUserByEmail()` first (the
+  same "no authenticated equivalent exists" exception as
+  `/settings/users`' `inviteMember`) and sets `status = "active"`
+  immediately, unlike `inviteMember`'s `"invited"` — there's no
+  promotion-to-active step anywhere in this codebase for either flow yet,
+  so modeling a separate "invited" portal state would create a stuck
+  state with no way out.
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/client_portal.sql`, 18 checks) proving a portal user
+  reads exactly their own client's visible data — not a sibling client in
+  the same workspace, not another workspace, not the coach-only columns —
+  and, critically, that the base `sessions` and `workspaces` tables
+  return zero rows to a portal user under direct query, proving the view
+  really is the only access path.
+- **This build reached `READY` on the first deploy.**
+- **Honestly not done yet**: no real browser/user test of the actual
+  login-to-dashboard flow (verified at the SQL layer and via HTTP
+  redirect behavior only); no way for a client to mark anything complete
+  from their side; client health status isn't shown at all.

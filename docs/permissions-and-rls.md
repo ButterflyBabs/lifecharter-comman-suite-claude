@@ -308,6 +308,58 @@ attribution succeeding, cross-workspace attribution being rejected on
 both `INSERT` and `UPDATE`, and clearing the column back to `null` still
 working.
 
+**Also built: a real client-facing portal, introducing a second identity
+class alongside workspace members.** A portal user authenticates through
+the same Supabase Auth but has no `workspace_members` row at all, so
+`private.active_workspace_ids()` — and every policy built on it — already
+excludes them without any change; new policies are additive grants, never
+a modification. Four tables get a new `SELECT` policy keyed off
+`client_portal_access` (identity: `user_id = auth.uid()` and
+`status = 'active'`, scoped to that row's `client_id`):
+`client_actions` (further gated by its own `client_visible` column),
+`deliverables`, `client_milestones`, and `client_metric_values` (further
+gated by `metrics.client_visible` via a subquery join — RLS policies can
+reference other tables in their `USING` clause, same as any SQL
+predicate). `metrics` itself gets a workspace-wide (not client-specific)
+`SELECT` policy for `client_visible = true` definitions, since metric
+*definitions* aren't per-client data.
+
+`sessions` and `workspaces` are different: both carry columns no client
+should ever see (`internal_notes`/`agenda`/`preparation_brief`;
+`subscription_plan_id`/`status`/etc.) alongside columns they should. RLS
+is row-level, not column-level — a policy granting "your own session row"
+still returns every column on it. Two views,
+`client_portal_sessions` and `client_portal_branding`, solve this instead:
+created with default (non-`security_invoker`) semantics, so they run with
+the view owner's privileges and bypass the base tables' RLS entirely, and
+do their own `client_portal_access`-based scoping in the view's `WHERE`
+clause. No policy grants a portal user the base `sessions` or
+`workspaces` tables directly — the view is the *only* access path, and it
+selects only the safe columns. This trips the security advisor's
+`ERROR`-level "security definer view" check, a correct general heuristic
+that doesn't fit this specific case: the linter's suggested alternative
+(`security_invoker = true` plus a matching base-table policy) would
+require granting portal users a real policy on `sessions`, which would
+let them query `/rest/v1/sessions` directly and receive `internal_notes`
+in full, since RLS can't hide individual columns the way a view's column
+list can.
+
+`record_portal_login()` is a narrow `SECURITY DEFINER` RPC rather than a
+policy: an `UPDATE` policy on `client_portal_access` scoped to
+`user_id = auth.uid()` would also let a portal user rewrite their own
+row's `client_id` to a *different* client in the same workspace, then use
+every read policy above (all of which trust
+`client_portal_access.client_id`) to pivot into that client's data. The
+RPC's `update` statement is hardcoded to only ever touch `last_login_at`,
+with no column a caller can influence.
+
+Verified with `supabase/tests/client_portal.sql` (18 checks), covering a
+portal user reading exactly their own client's visible rows across all
+four tables and both views, being rejected on a sibling client and
+another workspace, and — the check that actually justifies the
+security-definer views — receiving zero rows when querying the base
+`sessions`/`workspaces` tables directly.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |
