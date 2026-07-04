@@ -190,7 +190,7 @@ export default async function StrategyPage() {
                       <StatusBadge status={g.status} />
                     </div>
                     <p className="text-soft-taupe">
-                      {(g.business_command_domains as { name: string } | null)?.name ?? "No domain"} · {g.metric} → {g.target}
+                      {(g.business_command_domains as unknown as { name: string } | null)?.name ?? "No domain"} · {g.metric} → {g.target}
                       {g.period ? ` · ${g.period}` : ""} · reviewed {g.review_cadence}
                     </p>
 
