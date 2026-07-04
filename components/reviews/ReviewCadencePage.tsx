@@ -15,12 +15,13 @@ const CADENCE_LABELS: Record<string, string> = {
 };
 
 export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: string; redirectPath: string }) {
+  const label = CADENCE_LABELS[cadence] ?? cadence;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-semibold text-deep-indigo">{CADENCE_LABELS[cadence]}</h1>
+        <h1 className="text-2xl font-semibold text-deep-indigo">{label}</h1>
         <p className="mt-2 text-sm text-soft-taupe">
           <Link href="/roadmap/setup" className="underline">
             Set up your workspace
@@ -42,7 +43,7 @@ export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: st
   if (!template) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-semibold text-deep-indigo">{CADENCE_LABELS[cadence]}</h1>
+        <h1 className="text-2xl font-semibold text-deep-indigo">{label}</h1>
         <p className="mt-2 text-sm text-soft-taupe">No review template found for this cadence.</p>
       </div>
     );
@@ -70,7 +71,7 @@ export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: st
   if (!instance) {
     return (
       <div className="p-8">
-        <h1 className="text-2xl font-semibold text-deep-indigo">{CADENCE_LABELS[cadence]}</h1>
+        <h1 className="text-2xl font-semibold text-deep-indigo">{label}</h1>
         <p className="mt-2 text-sm text-soft-taupe">Could not start a review instance.</p>
       </div>
     );
@@ -93,7 +94,7 @@ export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: st
   return (
     <div className="p-8">
       <PageHeader
-        title={CADENCE_LABELS[cadence]}
+        title={label}
         description={
           completed?.completed_at
             ? `Last completed ${new Date(completed.completed_at).toLocaleString()}`
