@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signUp } from "./actions";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { Card } from "@/components/ui";
 
 export default async function SignUpPage({
   searchParams,
@@ -11,9 +12,9 @@ export default async function SignUpPage({
 
   if (checkEmail) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-ivory-light p-8">
-        <div className="w-full max-w-sm text-center">
-          <h1 className="mb-4 text-2xl font-semibold text-deep-indigo">Check your email</h1>
+      <main className="flex min-h-screen items-center justify-center p-8">
+        <Card className="w-full max-w-sm p-6 text-center">
+          <h1 className="lc-title-hero mb-4 text-2xl">Check your email</h1>
           <p className="text-sm text-soft-taupe">
             We sent a confirmation link. Follow it to activate your account, then{" "}
             <Link href="/login" className="underline">
@@ -21,18 +22,18 @@ export default async function SignUpPage({
             </Link>
             .
           </p>
-        </div>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ivory-light p-8">
-      <div className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center p-8">
+      <Card className="w-full max-w-sm p-6">
         <div className="mb-4 flex justify-end">
           <ThemeToggle />
         </div>
-        <h1 className="mb-6 text-2xl font-semibold text-deep-indigo">Create your account</h1>
+        <h1 className="lc-title-hero mb-6 text-2xl">Create your account</h1>
         {error && (
           <p role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
             {error}
@@ -79,7 +80,7 @@ export default async function SignUpPage({
             Sign in
           </Link>
         </p>
-      </div>
+      </Card>
     </main>
   );
 }

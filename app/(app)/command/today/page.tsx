@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { getMode } from "@/lib/mode/actions";
-import { StatTile } from "@/components/ui";
+import { Card, PageHeader, StatTile } from "@/components/ui";
 
 export default async function CommandTodayPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -85,10 +85,10 @@ export default async function CommandTodayPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Today</h1>
-      <p className="mt-1 text-xs text-soft-taupe">
-        {mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
-      </p>
+      <PageHeader
+        title="Today"
+        description={mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
+      />
 
       {mode === "run" && (
         <section className="mt-6">
@@ -96,8 +96,8 @@ export default async function CommandTodayPage() {
           {overdueTasks && overdueTasks.length > 0 ? (
             <ul className="mt-2 space-y-2">
               {overdueTasks.map((t) => (
-                <li key={t.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                  {t.title}
+                <li key={t.id}>
+                  <Card className="text-sm">{t.title}</Card>
                 </li>
               ))}
             </ul>
@@ -112,8 +112,10 @@ export default async function CommandTodayPage() {
           <h2 className="text-lg font-semibold text-deep-indigo">Active roadmap phase: {activePhase.name}</h2>
           <ul className="mt-2 space-y-2">
             {(activePhase.roadmap_milestones as any[])?.map((m) => (
-              <li key={m.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                {m.title} · {m.status}
+              <li key={m.id}>
+                <Card className="text-sm">
+                  {m.title} · {m.status}
+                </Card>
               </li>
             ))}
           </ul>

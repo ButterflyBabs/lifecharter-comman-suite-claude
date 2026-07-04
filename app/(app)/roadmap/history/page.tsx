@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { Card, PageHeader } from "@/components/ui";
 
 export default async function RoadmapHistoryPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -28,15 +29,17 @@ export default async function RoadmapHistoryPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Roadmap History</h1>
+      <PageHeader title="Roadmap History" />
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold text-deep-indigo">Business Command Audits</h2>
         {audits && audits.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {audits.map((a) => (
-              <li key={a.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                {a.period_start} {a.period_end ? `– ${a.period_end}` : ""} · {a.status}
+              <li key={a.id}>
+                <Card className="text-sm">
+                  {a.period_start} {a.period_end ? `– ${a.period_end}` : ""} · {a.status}
+                </Card>
               </li>
             ))}
           </ul>
@@ -50,11 +53,13 @@ export default async function RoadmapHistoryPage() {
         {roadmaps && roadmaps.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {roadmaps.map((r) => (
-              <li key={r.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                <p className="font-medium">{r.primary_outcome}</p>
-                <p className="text-soft-taupe">
-                  Started {r.start_date} · {r.status}
-                </p>
+              <li key={r.id}>
+                <Card className="text-sm">
+                  <p className="font-medium">{r.primary_outcome}</p>
+                  <p className="text-soft-taupe">
+                    Started {r.start_date} · {r.status}
+                  </p>
+                </Card>
               </li>
             ))}
           </ul>

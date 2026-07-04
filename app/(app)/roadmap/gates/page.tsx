@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { Card, PageHeader } from "@/components/ui";
 
 export default async function GatesPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -30,26 +31,32 @@ export default async function GatesPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Stage Gates</h1>
-      <p className="mt-2 max-w-2xl text-sm text-soft-taupe">
-        Every gate below blocks progression (Section 3: &ldquo;Stage gates have
-        meaning&rdquo;) until its requirements are satisfied — enforced at the database
-        level, not just in this view.
-      </p>
+      <PageHeader
+        title="Stage Gates"
+        description={
+          <>
+            Every gate below blocks progression (Section 3: &ldquo;Stage gates have
+            meaning&rdquo;) until its requirements are satisfied — enforced at the database
+            level, not just in this view.
+          </>
+        }
+      />
       {gates && gates.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {gates.map((g: any) => {
             const satisfied = approvedEvidenceSubjects.has(`${g.context_type}:${g.context_id}`);
             return (
-              <li key={g.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                <p className="font-medium">{g.name}</p>
-                <p className="text-soft-taupe">
-                  {g.rule_mode} · {g.status} ·{" "}
-                  {g.gate_requirements?.length ?? 0} requirement(s)
-                </p>
-                <p className={satisfied ? "text-sacred-teal" : "text-warm-gold"}>
-                  {satisfied ? "Satisfied" : "Not yet satisfied"}
-                </p>
+              <li key={g.id}>
+                <Card className="text-sm">
+                  <p className="font-medium">{g.name}</p>
+                  <p className="text-soft-taupe">
+                    {g.rule_mode} · {g.status} ·{" "}
+                    {g.gate_requirements?.length ?? 0} requirement(s)
+                  </p>
+                  <p className={satisfied ? "text-sacred-teal" : "text-warm-gold"}>
+                    {satisfied ? "Satisfied" : "Not yet satisfied"}
+                  </p>
+                </Card>
               </li>
             );
           })}

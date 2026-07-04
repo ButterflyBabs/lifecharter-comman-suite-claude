@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { markRead } from "./actions";
+import { PageHeader } from "@/components/ui";
 
 export default async function NotificationsPage() {
   const supabase = await createClient();
@@ -18,33 +19,27 @@ export default async function NotificationsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Notifications</h1>
-      <p className="mt-2 text-sm text-soft-taupe">
-        Meaningful, deduplicated events with direct actions (Section 14.4).
-      </p>
+      <PageHeader
+        title="Notifications"
+        description="Meaningful, deduplicated events with direct actions (Section 14.4)."
+      />
       {notifications && notifications.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {notifications.map((n) => (
-            <li
-              key={n.id}
-              className={`rounded border p-3 text-sm ${
-                n.read_at ? "border-soft-taupe/30" : "border-sacred-teal bg-soft-lavender/10"
-              }`}
-            >
-              <p className="font-medium">{n.message}</p>
-              <p className="text-soft-taupe">
-                {n.type} · {n.severity} · {new Date(n.created_at).toLocaleString()}
-              </p>
-              {!n.read_at && (
-                <form action={markRead.bind(null, n.id)} className="mt-2">
-                  <button
-                    type="submit"
-                    className="rounded border border-soft-taupe px-3 py-1 text-xs text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
-                  >
-                    Mark read
-                  </button>
-                </form>
-              )}
+            <li key={n.id}>
+              <div className={`lc-card p-4 text-sm ${n.read_at ? "" : "border-l-4 border-l-warm-gold"}`}>
+                <p className="font-medium">{n.message}</p>
+                <p className="text-soft-taupe">
+                  {n.type} · {n.severity} · {new Date(n.created_at).toLocaleString()}
+                </p>
+                {!n.read_at && (
+                  <form action={markRead.bind(null, n.id)} className="mt-2">
+                    <button type="submit" className="lc-btn-secondary px-3 py-1 text-xs">
+                      Mark read
+                    </button>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
         </ul>

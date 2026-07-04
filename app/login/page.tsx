@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signIn } from "./actions";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { Card } from "@/components/ui";
 
 export default async function LoginPage({
   searchParams,
@@ -10,12 +11,12 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ivory-light p-8">
-      <div className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center p-8">
+      <Card className="w-full max-w-sm p-6">
         <div className="mb-4 flex justify-end">
           <ThemeToggle />
         </div>
-        <h1 className="mb-6 text-2xl font-semibold text-deep-indigo">Sign in</h1>
+        <h1 className="lc-title-hero mb-6 text-2xl">Sign in</h1>
         {error && (
           <p role="alert" className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
             {error}
@@ -61,7 +62,7 @@ export default async function LoginPage({
             Create one
           </Link>
         </p>
-      </div>
+      </Card>
     </main>
   );
 }

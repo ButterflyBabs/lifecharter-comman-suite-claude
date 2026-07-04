@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { submitReview } from "@/lib/reviews/actions";
 import { FINDING_SEVERITIES, type ReviewOutputRules, type ReviewQuestion } from "@/lib/reviews/types";
+import { PageHeader } from "@/components/ui";
 
 const CADENCE_LABELS: Record<string, string> = {
   daily: "Daily Opening and Close",
@@ -91,12 +92,14 @@ export async function ReviewCadencePage({ cadence, redirectPath }: { cadence: st
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">{CADENCE_LABELS[cadence]}</h1>
-      {completed?.completed_at && (
-        <p className="mt-1 text-xs text-soft-taupe">
-          Last completed {new Date(completed.completed_at).toLocaleString()}
-        </p>
-      )}
+      <PageHeader
+        title={CADENCE_LABELS[cadence]}
+        description={
+          completed?.completed_at
+            ? `Last completed ${new Date(completed.completed_at).toLocaleString()}`
+            : undefined
+        }
+      />
       <form action={boundSubmit} className="mt-6 max-w-2xl space-y-6">
         {questions.map((q) => (
           <div key={q.key}>

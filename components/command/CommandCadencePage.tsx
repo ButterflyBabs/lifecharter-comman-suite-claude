@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { Card, PageHeader, StatusBadge } from "@/components/ui";
 
 export async function CommandCadencePage({
   title,
@@ -47,15 +48,18 @@ export async function CommandCadencePage({
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">{title}</h1>
+      <PageHeader title={title} />
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold text-deep-indigo">Outcomes</h2>
         {outcomes && outcomes.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {outcomes.map((o) => (
-              <li key={o.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                {o.title} · {o.status}
+              <li key={o.id}>
+                <Card className="flex items-center justify-between text-sm">
+                  <span>{o.title}</span>
+                  <StatusBadge status={o.status} />
+                </Card>
               </li>
             ))}
           </ul>
@@ -75,8 +79,8 @@ export async function CommandCadencePage({
         {decisions && decisions.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {decisions.map((d) => (
-              <li key={d.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                {d.question}
+              <li key={d.id}>
+                <Card className="text-sm">{d.question}</Card>
               </li>
             ))}
           </ul>

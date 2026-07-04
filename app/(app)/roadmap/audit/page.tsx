@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { submitAudit } from "./actions";
+import { PageHeader } from "@/components/ui";
 
 export default async function AuditPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -98,14 +99,18 @@ export default async function AuditPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Business Command Audit</h1>
-      <p className="mt-2 max-w-2xl text-sm text-soft-taupe">
-        Score each of the Twelve Business Command Domains on two independent measures
-        (Section 9.6): <strong>Build Completion</strong> — does the foundation exist —
-        and <strong>Operating Health</strong> — is it currently producing the intended
-        result. Submitting generates a prioritized roadmap from the lowest-scoring
-        domains.
-      </p>
+      <PageHeader
+        title="Business Command Audit"
+        description={
+          <>
+            Score each of the Twelve Business Command Domains on two independent measures
+            (Section 9.6): <strong>Build Completion</strong> — does the foundation exist —
+            and <strong>Operating Health</strong> — is it currently producing the intended
+            result. Submitting generates a prioritized roadmap from the lowest-scoring
+            domains.
+          </>
+        }
+      />
       {completedInstance && (
         <p className="mt-2 text-sm text-soft-taupe">
           You have a prior completed audit. Submitting this one starts a fresh cycle and
@@ -116,7 +121,7 @@ export default async function AuditPage() {
       <form action={submitAudit} className="mt-6 space-y-8">
         <input type="hidden" name="instance_id" value={instance.id} />
         {domains.map((domain) => (
-          <fieldset key={domain.name} className="rounded border border-soft-taupe/40 p-4">
+          <fieldset key={domain.name} className="lc-card p-4">
             <legend className="px-2 text-lg font-semibold text-deep-indigo">{domain.name}</legend>
             {domain.questions.map((q) => {
               const existing = responseByQuestion.get(q.id);

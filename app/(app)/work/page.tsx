@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { Card, PageHeader, StatusBadge } from "@/components/ui";
 
 export default async function WorkPage() {
   const workspaceId = await getCurrentWorkspaceId();
@@ -50,12 +51,16 @@ export default async function WorkPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Work Queue</h1>
-      <p className="mt-2 text-sm text-soft-taupe">
-        My Work, Overdue, Waiting On, and Risks (Section 5). Decisions, Approvals, and
-        Replies live at their own routes (<Link href="/decisions" className="underline">/decisions</Link>,{" "}
-        <Link href="/approvals" className="underline">/approvals</Link>).
-      </p>
+      <PageHeader
+        title="Work Queue"
+        description={
+          <>
+            My Work, Overdue, Waiting On, and Risks (Section 5). Decisions, Approvals, and
+            Replies live at their own routes (<Link href="/decisions" className="underline">/decisions</Link>,{" "}
+            <Link href="/approvals" className="underline">/approvals</Link>).
+          </>
+        }
+      />
 
       <TaskSection title="My Work" tasks={myWork} emptyLabel="Nothing assigned to you right now." />
       <TaskSection title="Overdue" tasks={overdue} emptyLabel="Nothing overdue." />
@@ -66,10 +71,12 @@ export default async function WorkPage() {
         {blockers && blockers.length > 0 ? (
           <ul className="mt-2 space-y-2">
             {blockers.map((b) => (
-              <li key={b.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-                <p className="font-medium">{b.reason}</p>
-                {b.waiting_on && <p className="text-soft-taupe">Waiting on: {b.waiting_on}</p>}
-                {b.impact && <p className="text-soft-taupe">Impact: {b.impact}</p>}
+              <li key={b.id}>
+                <Card className="text-sm">
+                  <p className="font-medium">{b.reason}</p>
+                  {b.waiting_on && <p className="text-soft-taupe">Waiting on: {b.waiting_on}</p>}
+                  {b.impact && <p className="text-soft-taupe">Impact: {b.impact}</p>}
+                </Card>
               </li>
             ))}
           </ul>
@@ -98,13 +105,17 @@ function TaskSection({
       {tasks && tasks.length > 0 ? (
         <ul className="mt-2 space-y-2">
           {tasks.map((t) => (
-            <li key={t.id} className="rounded border border-soft-taupe/40 p-3 text-sm">
-              <p className="font-medium">{t.title}</p>
-              <p className="text-soft-taupe">
-                {t.status}
-                {t.due_at ? ` · due ${new Date(t.due_at).toLocaleDateString()}` : ""}
-                {t.priority ? ` · ${t.priority}` : ""}
-              </p>
+            <li key={t.id}>
+              <Card className="flex items-center justify-between text-sm">
+                <div>
+                  <p className="font-medium">{t.title}</p>
+                  <p className="text-soft-taupe">
+                    {t.due_at ? `due ${new Date(t.due_at).toLocaleDateString()}` : ""}
+                    {t.priority ? ` · ${t.priority}` : ""}
+                  </p>
+                </div>
+                <StatusBadge status={t.status} />
+              </Card>
             </li>
           ))}
         </ul>

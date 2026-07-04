@@ -23,17 +23,17 @@ export async function Header() {
     : { count: 0 };
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-soft-taupe/30 bg-ivory-light px-4 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--card-border)] bg-[var(--surface-bg)] px-4 py-3">
       <div className="flex items-center gap-4">
-        <Link href="/command/today" className="font-semibold text-deep-indigo">
+        <Link href="/command/today" className="lc-title text-lg">
           LifeCharter
         </Link>
         {currentWorkspace ? (
-          <span aria-label="Current workspace" className="text-sm text-soft-taupe">
+          <span aria-label="Current workspace" className="text-sm text-[var(--text-muted)]">
             {currentWorkspace.name}
           </span>
         ) : (
-          <span className="text-sm text-soft-taupe">No workspace yet</span>
+          <span className="text-sm text-[var(--text-muted)]">No workspace yet</span>
         )}
         <ModeToggle />
       </div>
@@ -47,20 +47,20 @@ export async function Header() {
           name="q"
           type="search"
           placeholder="Search..."
-          className="w-full rounded border border-soft-taupe px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+          className="w-full rounded border border-[var(--card-border)] bg-transparent px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
         />
       </form>
 
       <nav aria-label="Quick access" className="flex items-center gap-3 text-sm">
-        <Link href="/work" className="text-deep-indigo hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
+        <Link href="/work" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
           Work
         </Link>
-        <Link href="/approvals" className="text-deep-indigo hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
+        <Link href="/approvals" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
           Approvals
         </Link>
         <Link
           href="/notifications"
-          className="text-deep-indigo hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+          className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
         >
           Notifications{unreadCount ? ` (${unreadCount})` : ""}
         </Link>

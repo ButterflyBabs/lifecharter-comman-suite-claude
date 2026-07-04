@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { createWorkspace } from "./actions";
 import { TIMEZONES } from "@/lib/timezones";
+import { PageHeader } from "@/components/ui";
 
 export default async function SetupPage({
   searchParams,
@@ -28,12 +29,12 @@ export default async function SetupPage({
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-deep-indigo">Set up your workspace</h1>
-      <p className="mt-2 text-sm text-soft-taupe">
-        A workspace is the boundary for everything you build here — your business
+      <PageHeader
+        title="Set up your workspace"
+        description="A workspace is the boundary for everything you build here — your business
         architecture, revenue, clients, and reviews all live inside it, isolated from
-        every other workspace by database-enforced Row Level Security.
-      </p>
+        every other workspace by database-enforced Row Level Security."
+      />
       {error && (
         <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
           {error}
