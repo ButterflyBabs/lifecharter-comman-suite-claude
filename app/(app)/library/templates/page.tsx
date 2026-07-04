@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
-import { createTemplate, addTemplateVersion, archiveTemplate } from "./actions";
+import { createTemplate, addTemplateVersion, archiveTemplate, publishToMarketplace, unpublishListing, installListing } from "./actions";
 
 const TEMPLATE_TYPES = [
   "email_sms",
@@ -44,12 +44,31 @@ export default async function TemplatesPage() {
 
   const supabase = await createClient();
 
-  const { data: templates } = await supabase
-    .from("templates")
-    .select("id, name, template_type, status, current_version_id, template_versions(id, version, content, schema_json, effective_at)")
-    .eq("workspace_id", workspaceId)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false });
+  const [{ data: templates }, { data: ownListings }, { data: marketplaceListings }] = await Promise.all([
+    supabase
+      .from("templates")
+      .select("id, name, template_type, status, current_version_id, template_versions(id, version, content, schema_json, effective_at)")
+      .eq("workspace_id", workspaceId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("template_marketplace_listings")
+      .select("id, source_template_id, name, status, install_count")
+      .eq("source_workspace_id", workspaceId)
+      .neq("status", "retired"),
+    supabase
+      .from("template_marketplace_listings")
+      .select("id, name, template_type, description, certified, install_count, source_workspace_id")
+      .eq("status", "published")
+      .order("install_count", { ascending: false }),
+  ]);
+
+  const publishedListingByTemplateId = new Map(
+    (ownListings ?? [])
+      .filter((l) => l.status === "published" && l.source_template_id)
+      .map((l) => [l.source_template_id as string, l] as const),
+  );
+  const otherWorkspaceListings = (marketplaceListings ?? []).filter((l) => l.source_workspace_id !== workspaceId);
 
   return (
     <div className="p-8">
@@ -63,6 +82,7 @@ export default async function TemplatesPage() {
           {templates.map((t) => {
             const versions = (t.template_versions as unknown as TemplateVersion[]).slice().sort((a, b) => b.version - a.version);
             const current = versions.find((v) => v.id === t.current_version_id);
+            const publishedListing = publishedListingByTemplateId.get(t.id);
             return (
               <Card key={t.id}>
                 <div className="flex items-center justify-between">
@@ -105,12 +125,37 @@ export default async function TemplatesPage() {
                   </form>
                 </details>
 
-                <form action={archiveTemplate} className="mt-2">
-                  <input type="hidden" name="template_id" value={t.id} />
-                  <button type="submit" className="lc-btn-secondary text-xs">
-                    Archive
-                  </button>
-                </form>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <form action={archiveTemplate}>
+                    <input type="hidden" name="template_id" value={t.id} />
+                    <button type="submit" className="lc-btn-secondary text-xs">
+                      Archive
+                    </button>
+                  </form>
+
+                  {publishedListing ? (
+                    <form action={unpublishListing}>
+                      <input type="hidden" name="listing_id" value={publishedListing.id} />
+                      <button type="submit" className="lc-btn-secondary text-xs">
+                        Unpublish ({publishedListing.install_count} install{publishedListing.install_count === 1 ? "" : "s"})
+                      </button>
+                    </form>
+                  ) : (
+                    <details>
+                      <summary className="cursor-pointer text-xs text-deep-indigo underline">Publish to Marketplace</summary>
+                      <form action={publishToMarketplace} className="mt-1 flex items-center gap-1">
+                        <input type="hidden" name="template_id" value={t.id} />
+                        <input
+                          type="text"
+                          name="description"
+                          placeholder="Describe this template for other workspaces"
+                          className="rounded border border-soft-taupe px-2 py-1 text-xs"
+                        />
+                        <button type="submit" className="lc-btn-secondary text-xs">Publish</button>
+                      </form>
+                    </details>
+                  )}
+                </div>
               </Card>
             );
           })}
@@ -149,6 +194,50 @@ export default async function TemplatesPage() {
           </button>
         </form>
       </details>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-deep-indigo">Marketplace</h2>
+        <p className="mt-1 text-sm text-soft-taupe">
+          Templates other workspaces have published. Installing copies a
+          snapshot into your own templates below — it&apos;s independent
+          from that point on, not a live link back to the source.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          {otherWorkspaceListings.map((listing) => (
+            <Card key={listing.id} className="text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">
+                  {listing.name}
+                  {listing.certified && <StatusBadge status="approved" tone="success" />}
+                </p>
+                <span className="text-xs text-soft-taupe">
+                  {listing.install_count} install{listing.install_count === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-xs text-soft-taupe">{listing.template_type.replace(/_/g, " ")}</p>
+              {listing.description && <p className="mt-1 text-soft-taupe">{listing.description}</p>}
+
+              <form action={installListing} className="mt-2">
+                <input type="hidden" name="listing_id" value={listing.id} />
+                <button type="submit" className="lc-btn-secondary text-xs">
+                  Install
+                </button>
+              </form>
+            </Card>
+          ))}
+          {otherWorkspaceListings.length === 0 && (
+            <p className="text-sm text-soft-taupe">No published templates from other workspaces yet.</p>
+          )}
+        </div>
+
+        <p className="mt-4 text-xs text-soft-taupe">
+          &quot;Certified&quot; listings would normally mean a platform
+          reviewer approved them, but this build has no
+          platform-operator role to do that review yet — the field exists
+          in the data model but nothing can set it true today.
+        </p>
+      </section>
     </div>
   );
 }
