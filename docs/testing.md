@@ -655,9 +655,51 @@ gaps:**
   nothing in this build can set it true, since there is no
   platform-operator/superadmin role anywhere in the app. Documented as an
   explicit, confirmed-with-the-user deferral, not an oversight.
-- **4 of Phase 8's 5 deferred items remain**: white-label client
-  workspace options, benchmarking with privacy-safe aggregation, mobile
-  and voice-first refinements, and multi-brand/multi-business
-  enhancements beyond what `business_units` already provides.
+- **3 of Phase 8's 5 deferred items remain**: white-label client
+  workspace options, benchmarking with privacy-safe aggregation, and
+  multi-brand/multi-business enhancements beyond what `business_units`
+  already provides. (Mobile and voice-first refinements are now built —
+  see the section below.)
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## Mobile and Voice-First Refinements Test Status
+
+Built Phase 8's deferred-remainder item 2 (Section 16.2/16.4): a global
+command palette, Command Center's mobile-priority rebuild, approvals
+batch/voice-friendly labels, and a table/card fallback on `/ai/policies`.
+No schema changes, so no new SQL test was needed — this phase's
+verification is build/runtime only.
+
+**This build reached `READY` on the first deploy.** `/command/today`,
+`/approvals`, and `/ai/policies` all resolve and correctly redirect an
+unauthenticated request to `/login` with a 200.
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** The command palette's
+  keyboard interaction (Cmd/Ctrl+K, arrow-key navigation, Enter to
+  navigate), Command Center's new stat tiles, the approvals batch-select
+  checkboxes tied to a sibling form via the HTML `form` attribute, and
+  the `/ai/policies` card fallback below the `sm` breakpoint have all
+  been read-reviewed and compile cleanly, but none have been clicked
+  through, tested at a real mobile viewport width, or driven by an actual
+  keyboard-only or screen-reader pass.
+- **The at-risk-client count is a bounded approximation** (latest of the
+  300 most recent `client_health_events` rows workspace-wide, deduped per
+  client) rather than a true per-client "current status" query — could
+  undercount in a workspace with unusually heavy health-event volume
+  across many distinct clients. See docs/data-model.md's assumptions for
+  detail.
+- **Capacity utilization is an all-time ratio, not period-scoped** —
+  `capacity_allocations.period` has no established format convention to
+  filter on yet.
+- **A full sweep of every button label across ~80 routes for
+  voice-friendly phrasing was not attempted** — only the spec's own named
+  example surface (Approvals) was fixed.
+- **3 of Phase 8's 5 deferred items remain**: white-label client
+  workspace options, benchmarking with privacy-safe aggregation, and
+  multi-brand/multi-business enhancements.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).

@@ -7,9 +7,10 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, the entire Settings section (Appendix A), and the template
-marketplace (the first item of Phase 8's deferred remainder).** Every
-canonical route in the app is now built. 177 tables are live in
+Library + Search, the entire Settings section (Appendix A), the template
+marketplace, and mobile/voice-first refinements (items 1 and 2 of Phase 8's
+deferred remainder).** Every canonical route in the app is now built. 177
+tables are live in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
@@ -18,10 +19,12 @@ Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
 subscription billing/entitlements, usage limits, and data export/deletion,
 deferring template marketplace, white-label workspaces, cross-tenant
 benchmarking, mobile/voice refinements, and multi-brand enhancements to
-explicit future requests; the marketplace has since been built (see the Phase
-8 assumptions section and the template marketplace assumptions section below).
-White-label workspaces, cross-tenant benchmarking, mobile/voice refinements,
-and multi-brand enhancements remain deferred. Migrations live in `supabase/migrations/`,
+explicit future requests; the marketplace and mobile/voice-first refinements
+have since been built (see the Phase 8, template marketplace, and
+mobile/voice-first assumptions sections below). White-label workspaces,
+cross-tenant benchmarking, and multi-brand enhancements remain deferred.
+Mobile/voice-first refinements required no schema changes — pure UI/component
+work within the existing security model. Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
@@ -1247,3 +1250,49 @@ they are not repeated in every row.
   directly.
 - **This build reached `READY` on the first deploy** (after the one
   advisor-caught grants fix, applied before any deploy).
+
+## Assumptions Recorded in the Mobile and Voice-First Refinements build
+
+- **No schema changes at all — the only Phase 8 deferred item so far that
+  needed none.** Every piece (command palette, Command Center's stat
+  queries, approvals batch actions, the table/card fallback) reads
+  existing tables through the existing RLS-scoped client; nothing new was
+  added to the data model or its security surface.
+- **Scoped to what Section 16.2/16.4 name concretely, not a full-site
+  audit** — a global command palette, Command Center's mobile priority
+  reordering (current priority, today's work, decisions and approvals,
+  client and revenue alerts, roadmap progress, capacity, secondary
+  metrics/history), voice-friendly approval labels plus batch
+  approve/reject, and a card fallback for the one `<table>` in the app
+  (`/ai/policies`). A page-by-page sweep of every button label across
+  ~80 routes for "voice-friendly" phrasing was judged out of scope for
+  one pass; the highest-value, spec-named surface (approvals) was fixed
+  instead.
+- **No Kanban/drag interactions exist anywhere in this build** — every
+  stage/status change already uses a `<select>` plus submit button (set
+  in Phase 4's pipeline stage-move and every status-transition form
+  since), so Section 16.2's "alternative controls for Kanban movement and
+  reordering" requirement is satisfied by never having built drag-only
+  interaction in the first place. Documented as a finding, not built,
+  since there was nothing to fix.
+- **No hover-only disclosure exists either** — the `<details>/<summary>`
+  progressive-disclosure pattern used throughout this app (every "Add
+  version," "Create X," "Publish to Marketplace" control) is click/tap
+  based already, not hover-triggered, so it was already voice- and
+  touch-friendly by construction.
+- **At-risk client detection is a client-side "latest event per client"
+  reduction**, not a query — `client_health_events` is a time-series
+  table with no "current status" column, so Command Center fetches the
+  300 most recent events workspace-wide (ordered newest first) and keeps
+  only the first (most recent) row per `client_id` in a `Map`, then
+  counts `at_risk` among those. A workspace with more than 300 stale
+  health events between distinct clients could undercount; flagged as a
+  simplification rather than guessed at with an unbuilt aggregation
+  query.
+- **Capacity utilization is a simple all-time ratio**
+  (`sum(actual_hours) / sum(planned_hours)` across every
+  `capacity_allocations` row for the workspace), not scoped to a "current
+  period" — `capacity_allocations.period` is free text with no
+  established format convention from Phase 6, so no period-filtering
+  logic was invented to guess at one.
+- **This build reached `READY` on the first deploy.**

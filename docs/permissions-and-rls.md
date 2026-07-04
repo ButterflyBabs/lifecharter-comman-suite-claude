@@ -235,6 +235,18 @@ published one is visible, direct cross-tenant writes are still blocked
 even though the row is readable, and the install-count RPC only ever
 touches published listings.
 
+**Also built: mobile and voice-first refinements (command palette, Command
+Center's mobile hierarchy, approvals batch actions, a table/card fallback)
+— no new RLS surface at all.** Every new query (open decisions, at-risk
+clients, overdue invoices, failed payments, capacity allocations) reads
+tables whose RLS was already proven in earlier phases, through the
+regular RLS-scoped client; the batch-approve/reject action
+(`decideApprovalsBatch`) uses a plain `.update().in("id", approvalIds)`
+against `approvals`, which RLS already scopes to the caller's own
+workspace regardless of how many rows are targeted in one call. The
+command palette is pure client-side navigation (a static route list,
+`router.push()`) with no data access at all.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |
