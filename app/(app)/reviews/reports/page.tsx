@@ -2,6 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader } from "@/components/ui";
 
+type BenchmarkRow = {
+  metric: string;
+  your_value: number | null;
+  benchmark_value: number | null;
+  contributing_workspaces: number;
+};
+
 const BENCHMARK_LABELS: Record<string, { label: string; lowerIsBetter?: boolean }> = {
   closed_won_rate: { label: "Closed-won rate" },
   client_at_risk_pct: { label: "Clients at risk", lowerIsBetter: true },
@@ -62,7 +69,7 @@ export default async function ReviewReportsPage() {
           workspace&apos;s number is ever identifiable.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {(benchmarks ?? []).map((b) => {
+          {((benchmarks ?? []) as unknown as BenchmarkRow[]).map((b) => {
             const meta = BENCHMARK_LABELS[b.metric] ?? { label: b.metric };
             return (
               <Card key={b.metric} className="text-sm">
