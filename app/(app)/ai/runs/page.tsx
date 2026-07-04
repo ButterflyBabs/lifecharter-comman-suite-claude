@@ -3,7 +3,12 @@ import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
 import { recordRunWithOutput } from "./actions";
 
-export default async function RunsPage() {
+export default async function RunsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const workspaceId = await getCurrentWorkspaceId();
 
   if (!workspaceId) {
@@ -33,6 +38,12 @@ export default async function RunsPage() {
         title="Run History"
         description="Auditability for AI requests, inputs, sources, outputs, cost, latency, errors, and human decisions."
       />
+
+      {error && (
+        <p role="alert" className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          {decodeURIComponent(error)}
+        </p>
+      )}
 
       {runs && runs.length > 0 ? (
         <ul className="mt-6 space-y-3">

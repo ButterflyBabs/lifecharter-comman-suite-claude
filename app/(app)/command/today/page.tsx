@@ -56,6 +56,13 @@ export default async function CommandTodayPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  const { data: subscription } = await supabase
+    .from("workspace_subscriptions")
+    .select("status")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  const needsActivation = !subscription || !["active", "trialing", "past_due"].includes(subscription.status);
+
   const [{ data: overdueTasks }, { data: blockers }, { count: pendingApprovals }, { data: activePhase }] =
     await Promise.all([
       supabase
@@ -89,6 +96,13 @@ export default async function CommandTodayPage() {
         title="Today"
         description={mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
       />
+
+      {needsActivation && (
+        <Card className="mt-4 flex items-center justify-between text-sm">
+          <span>This workspace has no active subscription yet — choose a plan to unlock full usage limits.</span>
+          <Link href="/settings/billing" className="lc-btn-secondary text-xs">Choose a plan</Link>
+        </Card>
+      )}
 
       {mode === "run" && (
         <section className="mt-6">
