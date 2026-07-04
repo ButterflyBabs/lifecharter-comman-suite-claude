@@ -269,6 +269,26 @@ RPC needed a follow-up fix for. Verified with
 passing cases, the fixed 4-row return shape regardless of total workspace
 count, and a non-member's request being rejected outright.
 
+**Also built: white-label workspace options, adding one new table
+(`workspace_domains`) that deliberately does *not* follow the
+marketplace/benchmarking's cross-tenant pattern.** A domain has no reason
+to be visible to anyone outside its own workspace, so `workspace_domains`
+uses the exact same two-policy shape as `business_units` since Phase 1:
+a broad `for select` policy scoped to `workspace_id in (select
+private.active_workspace_ids())` for any active member, and a narrower
+`for all` policy gated on `private.has_workspace_role(workspace_id,
+array['Workspace Owner', 'Administrator'])` for writes. The one
+cross-tenant-relevant property is a plain SQL `unique` constraint on
+`domain` (global, not per-workspace) — it blocks two workspaces from
+claiming the same domain without needing any special RLS handling, the
+same way any multi-tenant domain-claiming system works. The new branding
+columns on `workspaces` needed no new policy at all, since the existing
+"owners and admins can update their workspace" `UPDATE` policy already
+covers whatever columns a statement touches. Verified with
+`supabase/tests/white_label.sql`, covering cross-tenant read isolation,
+the uniqueness constraint, and a plain member's `INSERT` attempt being
+rejected with an actual `insufficient_privilege` RLS error.
+
 ## 11.1 Default Workspace Roles
 
 | Role | Core access |

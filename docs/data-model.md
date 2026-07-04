@@ -7,10 +7,11 @@ source of truth for schema design; no table should be created that isn't listed 
 
 **Status as of Phase 8 (subset A): the full Section 18 build order (Phases 0-7) is
 complete, plus a prioritized first slice of Phase 8, the Knowledge and Asset
-Library + Search, the entire Settings section (Appendix A), and 3 of Phase 8's
+Library + Search, the entire Settings section (Appendix A), and 4 of Phase 8's
 5 deferred items — the template marketplace, mobile/voice-first refinements,
-and benchmarking with privacy-safe aggregation.** Every canonical route in the
-app is now built. 177 tables are live in
+benchmarking with privacy-safe aggregation, and white-label workspace
+options.** Every canonical route in the app is now built. 178 tables are live
+in
 `itxfgxmdyqpcytmgdysa`, all with Row Level Security enabled and zero new
 security-advisor findings beyond one expected, by-design INFO finding (see
 Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
@@ -19,12 +20,11 @@ Phase 8 assumptions below). Phases 0-7 built the complete canonical object model
 subscription billing/entitlements, usage limits, and data export/deletion,
 deferring template marketplace, white-label workspaces, cross-tenant
 benchmarking, mobile/voice refinements, and multi-brand enhancements to
-explicit future requests; the marketplace, mobile/voice-first refinements, and
-benchmarking have since been built (see the Phase 8, template marketplace,
-mobile/voice-first, and benchmarking assumptions sections below). Only
-white-label workspaces and multi-brand enhancements remain deferred.
-Benchmarking, like mobile/voice-first, required no new table — a single
-computed-on-read function, not stored data. Migrations live in `supabase/migrations/`,
+explicit future requests; all but multi-brand enhancements have since been
+built (see the Phase 8, template marketplace, mobile/voice-first,
+benchmarking, and white-label assumptions sections below). Only multi-brand/
+multi-business enhancements remain deferred from Phase 8's original list.
+Migrations live in `supabase/migrations/`,
 applied via the Supabase MCP connector and tracked in Supabase's own migration
 history (`list_migrations`). See
 [migration-and-deployment.md](migration-and-deployment.md) for full detail.
@@ -177,9 +177,32 @@ thresholds (which metrics, and the 10-workspace anonymity floor) were
 confirmed with the user before building, the same "ask before crossing
 the isolation boundary" discipline as the marketplace. Lives inside the
 existing `/reviews/reports` page (Section 15's own stated future home for
-deeper metrics) rather than a new route. See Assumptions below. Only
-white-label workspaces and multi-brand enhancements remain deferred from
-Phase 8's original list.
+deeper metrics) rather than a new route. See Assumptions below.
+
+**Also built: white-label workspace options, the fourth item of Phase 8's
+deferred remainder.** One new table, `workspace_domains` (178th table),
+plus three branding columns added directly to `workspaces`
+(`client_portal_display_name`, `client_portal_logo_url`,
+`client_portal_primary_color`, already covered by the existing
+owner/admin workspace-update policy — no new RLS policy needed for
+those). Two explicit user decisions were made before building: (1) both
+custom-domain request/verification and client-facing branding are in
+scope; (2) DNS verification is real (via Node's `dns/promises`, checking
+for a CNAME to `cname.vercel-dns.com` or an A record to `76.76.21.21`),
+but actually attaching a verified domain to the live Vercel project stays
+a manual step in the Vercel dashboard — this build never calls Vercel's
+domain API on a workspace's behalf, the same "we verify, you attach the
+real credential yourself" precedent as the Stripe price IDs. Unlike the
+marketplace and benchmarking, `workspace_domains` uses the standard
+workspace-isolation RLS pattern, not a cross-tenant read — a domain has
+no reason to be visible outside its own workspace. Lives inside
+`/settings/workspace` (a new White-Label section) and `/clients/portal`
+(a branding preview card), rather than a new route. A real gap was
+surfaced, not created, while building this: no dedicated client-facing
+portal view exists yet for a client to actually see this branding —
+`/clients/portal` has only ever been the coach-facing management page.
+See Assumptions below. Only multi-brand/multi-business enhancements
+remain deferred from Phase 8's original list.
 
 ## 10.1 Data Architecture Principles
 
@@ -1368,3 +1391,52 @@ they are not repeated in every row.
   structurally incapable of leaking a per-workspace row; and a user who
   isn't a member of the target workspace is rejected outright rather than
   silently reading its data.
+
+## Assumptions Recorded in the White-Label build
+
+- **Both custom-domain request/verification and client-facing branding
+  were confirmed in scope before building** — the alternative (branding
+  only, no domain machinery) was explicitly offered and declined.
+- **DNS verification is real; domain attachment is manual, confirmed with
+  the user before building.** `checkDomainDns` performs an actual DNS
+  lookup (Node's `dns/promises`, `resolveCname` first, falling back to
+  `resolve4` for apex domains that can't hold a CNAME) and only marks a
+  domain `verified` once it resolves to Vercel's documented targets
+  (`cname.vercel-dns.com` or `76.76.21.21`). It never calls Vercel's own
+  domain-attachment API — actually making the domain live against the
+  production project is a manual step a workspace owner completes in the
+  Vercel dashboard, the same "verify or scaffold, but let the user hold
+  the real credential/infra action" precedent as the Stripe test-mode
+  Price IDs.
+- **`workspace_domains` uses the standard workspace-isolation RLS
+  pattern, not a cross-tenant read** — unlike the marketplace and
+  benchmarking, there's no reason for another workspace to ever see a
+  domain that isn't theirs. A global `unique` constraint on `domain`
+  (not scoped per-workspace) is the only cross-tenant-relevant behavior:
+  it prevents two workspaces from claiming the same domain, the same way
+  Vercel or Netlify's own domain claiming works — a rejected duplicate
+  claim reveals that a domain is taken, never by whom.
+- **Branding columns live on `workspaces` directly, not a new table** —
+  `client_portal_display_name`/`logo_url`/`primary_color` are workspace
+  singleton attributes, the same shape as `timezone`/`currency`/`locale`
+  already on that table, and the existing "owners and admins can update
+  their workspace" policy already covers them with no new policy needed.
+- **A real, pre-existing gap was surfaced, not created, while building
+  this**: there is no dedicated client-facing portal view anywhere in
+  this app for an actual client to sign in and see their own program,
+  sessions, or outcomes — `/clients/portal` (Phase 5) has only ever been
+  the coach-facing page for granting/suspending portal access. Branding
+  is applied to a preview card on that same coach-facing page rather than
+  a client-facing view that doesn't exist, and this gap is documented
+  honestly rather than silently worked around or expanded in scope to fix
+  (building a role-based client-facing app surface was judged well beyond
+  "add white-label branding").
+- **Verified with a real, transaction-wrapped SQL test**
+  (`supabase/tests/white_label.sql`) covering cross-tenant read isolation
+  on `workspace_domains`, the global uniqueness constraint blocking a
+  second workspace from claiming an already-registered domain, and a
+  plain member (not Workspace Owner/Administrator) being blocked from
+  adding a domain via an actual `insufficient_privilege` RLS error (not
+  a silent no-op, since `INSERT` under RLS raises rather than affecting
+  0 rows).
+- **This build reached `READY` on the first deploy.**

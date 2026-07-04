@@ -748,7 +748,56 @@ gaps:**
   workspace will see an actual number soon depends on how many workspaces
   sign up and how much opportunity/health/capacity/automation data they
   each accumulate.
-- **2 of Phase 8's 5 deferred items remain**: white-label client
-  workspace options and multi-brand/multi-business enhancements.
+- **1 of Phase 8's 5 deferred items remains**: multi-brand/multi-business
+  enhancements. (White-label is now built too — see the section below.)
+- **No automated CI** for the SQL tests (same gap as every prior phase —
+  still run manually).
+
+## White-Label Test Status
+
+Built Phase 8's deferred-remainder item 4: custom-domain
+request/verification (`workspace_domains`, real DNS lookups) and
+client-facing branding columns on `workspaces`, both confirmed in scope
+with the user before building.
+
+One more real, transaction-wrapped SQL test was added and passes:
+
+- `supabase/tests/white_label.sql` — proves cross-tenant read isolation
+  on `workspace_domains` (tenant B gets 0 rows querying tenant A's
+  domain directly), the global domain-uniqueness constraint blocking
+  tenant B from claiming a domain already registered to tenant A (a real
+  `unique_violation`, not a silent failure), a plain member of tenant A
+  being rejected with an actual `insufficient_privilege` RLS error when
+  attempting to add a domain (INSERT under RLS raises rather than
+  silently affecting 0 rows, unlike UPDATE/DELETE against hidden rows —
+  this test initially miscounted that distinction and was corrected
+  before the final run), and a Workspace Owner successfully adding a
+  second domain for their own workspace.
+
+**This build reached `READY` on the first deploy.**
+
+**Honestly not done yet, on top of every prior phase's carried-forward
+gaps:**
+
+- **No UI testing with a real browser or user.** `/settings/workspace`'s
+  White-Label section (add/check/remove domain, branding form) and
+  `/clients/portal`'s branding preview card have been verified at the SQL
+  layer (RLS, the uniqueness constraint) and the build/runtime layer
+  (compiles, both routes resolve and correctly redirect an
+  unauthenticated request to `/login` with a 200), but no one has
+  actually registered a real domain, watched a live DNS check resolve to
+  `verified`, or saved real branding and viewed the preview render.
+- **No real domain has been verified or attached** — the DNS-check logic
+  is real, but exercising it end-to-end needs a workspace owner who
+  actually controls a domain's DNS records; even once "verified," this
+  build never calls Vercel's API, so making that domain actually resolve
+  to the live app is a manual step nobody has performed yet.
+- **No dedicated client-facing portal view exists to actually show this
+  branding to a client** — `/clients/portal` remains the coach-facing
+  management page it always was; this is a real, pre-existing gap
+  surfaced (not created) by this work, flagged honestly rather than
+  expanded into scope to fix.
+- **1 of Phase 8's 5 deferred items remains**: multi-brand/multi-business
+  enhancements.
 - **No automated CI** for the SQL tests (same gap as every prior phase —
   still run manually).
