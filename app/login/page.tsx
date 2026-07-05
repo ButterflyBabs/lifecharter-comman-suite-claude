@@ -33,7 +33,7 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
-              className="mt-1 w-full rounded border border-soft-taupe px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+              className="mt-1 w-full rounded border border-soft-taupe bg-transparent px-3 py-2 text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
             />
           </div>
           <div>
@@ -46,7 +46,7 @@ export default async function LoginPage({
               type="password"
               required
               autoComplete="current-password"
-              className="mt-1 w-full rounded border border-soft-taupe px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+              className="mt-1 w-full rounded border border-soft-taupe bg-transparent px-3 py-2 text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
             />
           </div>
           <button

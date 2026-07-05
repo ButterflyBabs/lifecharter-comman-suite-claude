@@ -55,6 +55,24 @@ body {
   font-family: var(--font-body), sans-serif;
 }
 
+/* Theme-aware default for form controls. Inputs inherit the body's (theme-
+   flipping) text color but kept the browser's white background, so in dark mode
+   text rendered white-on-white. Give them the theme surface background by
+   default; Tailwind utilities (bg-transparent, bg-white, text-*) still override
+   this where a component sets them explicitly. */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    background-color: var(--surface-bg);
+    color: var(--deep-indigo);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-muted);
+  }
+}
+
 /* ============================================================
    Brand components (Section 4/5 of the brand board: rounded
    panels, thin gold outlines, circular icon badges, gold
