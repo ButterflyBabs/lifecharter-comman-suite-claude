@@ -44,14 +44,36 @@ invented, paraphrased, or summarized by an assistant.
 
 ## Seeding (only after approval)
 
-Seeding is intentionally **not** wired yet. Once `status: APPROVED` and the test
-passes, generate a tracked migration that inserts the bank into
-`public.audit_questions` (mapping `code` → `domain_id`, plus `response_type`,
-`score_category`, `weight`, `evidence_rule`), and tag the snapshot subset via
-`include_in_snapshot`. Decide at that point whether the seed **replaces** the
-existing 24 AI-authored questions or **supersedes** them via a new
-`audit_templates` version (recommended, so historical `audit_responses` keep
-resolving). No question is ever hard-deleted.
+The seed **generator** is ready: `scripts/seed-business-command-audit.mjs`
+(run via `npm run seed:bca`). It refuses to emit anything unless this bank is
+`APPROVED`, checksum-matched, has the canonical 12 domains, and has ≥4/domain
+(≥48 total) with non-empty text and valid response/score types — so it can never
+seed empty or unapproved content, and it only transcribes approved text (never
+invents).
+
+Once approved:
+
+```sh
+npm run seed:bca -- --dry-run   # preview the SQL
+npm run seed:bca                # write supabase/migrations/<ts>_seed_business_command_audit_v1.sql
+```
+
+Then review the generated migration and apply it via the normal Supabase
+workflow (CLI `supabase db push` or MCP `apply_migration`).
+
+The generated migration uses a **non-destructive supersede**: current
+Standard-template questions are reparented to a retired template (so historical
+`audit_responses` still resolve), the Standard template's version is bumped, and
+the approved bank is inserted under the Standard template — so the app keeps
+resolving the active bank by name with no code change. No question is ever
+hard-deleted.
+
+Notes / current schema limits the generator enforces:
+- `audit_questions.score_category` is **NOT NULL** → every question needs
+  `build_completion` or `operating_health`.
+- There is **no options column** yet → `multiple_choice` is rejected until a
+  schema migration adds one.
+- `weight` = the question's `weight`, else its category weight, else `1`.
 
 ## Guardrail
 
