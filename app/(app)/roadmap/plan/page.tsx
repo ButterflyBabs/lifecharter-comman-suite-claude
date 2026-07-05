@@ -77,7 +77,7 @@ export default async function RoadmapPlanPage() {
         />
 
         <Card className="mt-6">
-          <h2 className="text-lg font-semibold text-deep-indigo">What you'll get</h2>
+          <h2 className="text-lg font-semibold text-deep-indigo">What you&apos;ll get</h2>
           <ul className="mt-2 space-y-1 text-sm text-soft-taupe">
             <li>• An overall build-completion and operating-health score across all twelve areas.</li>
             <li>• Your top gaps, contradictions, and strengths, explained in plain language.</li>
@@ -91,19 +91,22 @@ export default async function RoadmapPlanPage() {
               Start My Business Command Audit
             </button>
           </form>
+          <p className="mt-3 text-xs text-soft-taupe">
+            Want AI-written findings? Add your API key in{" "}
+            <Link href="/settings/ai-credentials" className="underline">
+              Settings → AI Keys
+            </Link>{" "}
+            first (optional — your scores work without it).
+          </p>
         </Card>
 
         {/* Muted, non-interactive 12-phase preview */}
         <p className="mt-8 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
-          The twelve areas you'll assess
+          The twelve areas you&apos;ll assess
         </p>
         <ol className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
           {(domains ?? []).map((d) => (
-            <li
-              key={d.id}
-              aria-disabled="true"
-              className="rounded-xl border border-[var(--card-border)] p-3 opacity-70"
-            >
+            <li key={d.id} className="rounded-xl border border-[var(--card-border)] p-3 opacity-70">
               <p className="text-sm font-medium text-deep-indigo">
                 {d.display_order}. {d.name}
               </p>

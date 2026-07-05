@@ -128,10 +128,21 @@ export default async function FindingsPage() {
         </table>
       </div>
 
-      {summary?.narrative && (
+      {summary?.narrative ? (
         <Card className="mt-6">
           <h2 className="text-lg font-semibold text-deep-indigo">Summary</h2>
           <p className="mt-2 whitespace-pre-line text-sm text-soft-taupe">{summary.narrative}</p>
+        </Card>
+      ) : (
+        <Card className="mt-6">
+          <p className="text-sm text-soft-taupe">
+            Your scores above are ready. To add an AI-written interpretation (top gaps, strengths, and 90-day
+            priorities), connect an API key in{" "}
+            <Link href="/settings/ai-credentials" className="underline">
+              Settings → AI Keys
+            </Link>
+            , then re-open your audit and complete it again.
+          </p>
         </Card>
       )}
 
