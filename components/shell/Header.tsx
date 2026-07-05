@@ -40,10 +40,11 @@ export async function Header() {
       {/* A 2-row grid (rather than two independent flex rows) so specific
           columns line up exactly: workspace name sits above Notifications,
           Build/Run sits above Light/Dark, and search sits above the account
-          email. The nav-links column is auto-width (not flexible) so Jump
-          to/Work/Approvals sit tight against Notifications instead of being
-          pushed apart by the search box's width. */}
-      <div className="grid min-w-0 flex-1 grid-cols-[auto_auto_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+          email. Every column is auto-width (not flexible) and the whole
+          block is pushed to the right with ml-auto, so it hugs the header's
+          right edge instead of stretching a column and leaving dead space
+          after the content. */}
+      <div className="grid ml-auto grid-cols-[auto_auto_auto_auto] items-center gap-x-4 gap-y-2">
         <div className="col-start-1 row-start-2 flex flex-wrap items-center gap-3 text-sm">
           <CommandPalette />
           <Link href="/work" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
@@ -78,7 +79,7 @@ export async function Header() {
           <ThemeToggle />
         </div>
 
-        <form action="/search" className="col-start-4 row-start-1 min-w-[160px] max-w-md">
+        <form action="/search" className="col-start-4 row-start-1 w-64">
           <label htmlFor="global-search" className="sr-only">
             Search
           </label>
