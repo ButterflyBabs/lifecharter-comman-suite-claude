@@ -99,7 +99,7 @@ export default async function RoadmapPlanPage() {
   const allDone = totalCount > 0 && doneCount === totalCount;
 
   return (
-    <div className="max-w-4xl p-8">
+    <div className="max-w-5xl p-8">
       <PageHeader
         title="Your Roadmap"
         description={
