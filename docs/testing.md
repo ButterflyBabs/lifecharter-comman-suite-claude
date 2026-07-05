@@ -1090,8 +1090,48 @@ One real, transaction-wrapped SQL test was added and passes:
   can still write `sessions.internal_notes` via the base table's existing
   workspace-membership UPDATE policy, unchanged by this build. Section 11.3's
   example is about visibility, not write access, so this wasn't addressed here.
-- **No real browser/user test** that the "Mark reconciled" button actually appears
-  only for permitted roles and behaves correctly end to end in a live session.
+- ~~No real browser/user test that the "Mark reconciled" button actually appears
+  only for permitted roles~~ **Partially closed** — see the Real Browser Verification
+  section below. The `/settings/roles` permission catalog was confirmed live and
+  correct for every role; the button itself wasn't clickable end to end since the
+  live test workspace has no payments yet (left untested by choice, not blocked).
 - **No automated CI** for the SQL tests (same gap as every prior phase — still run
   manually, though the automated workflow from the CI build above does cover this
   new test file too, being a glob over `supabase/tests/*.sql`).
+
+## Real Browser Verification and Accessibility Pass
+
+The first real, interactive browser test of this build (every prior phase's
+"honestly not done yet" flagged this — always verified via SQL tests, HTTP status
+checks, and structural code review, never an actual browser). Using the Claude
+Chrome extension against the live production deployment, signed in as a real
+workspace user ("Babs' Test"):
+
+- Command Center, Work, Business Architecture, Operations, AI Team, Reviews,
+  Client Portal management, Billing, `/clients/sessions`, and `/revenue/payments`
+  all render cleanly with no console errors beyond one harmless exception thrown
+  by the Chrome extension itself.
+- `/settings/roles` confirmed the fine-grained permissions build (above) live and
+  correct: every one of the 15 system role cards shows exactly the permission set
+  designed and SQL-tested, not just claimed by the migration.
+- **A real keyboard-only pass** (Tab through Command Center) confirmed visible
+  focus outlines on both plain links and Card-wrapped StatTile links, in a logical
+  tab order — the first time Section 18's "keyboard... smoke test" acceptance
+  criterion was verified by actually pressing Tab, not just reviewing the CSS.
+- **A real 200% zoom/reflow test** (Section 18's "zoom" criterion) found a genuine,
+  if minor, bug: `ModeToggle` (Build/Run) and `ThemeToggle` (Light/Dark) wrap their
+  two buttons in a `div` with `overflow-hidden` (needed to clip the rounded pill
+  corners) but no `shrink-0`, so at high zoom the header's flex-wrap could squeeze
+  the toggle below its content width and clip the second button's label instead of
+  wrapping the whole toggle to a new line. Fixed by adding `shrink-0` to both
+  components; re-verified at 200% zoom on the live deployment after the fix
+  redeployed — the toggle now either renders at full size or wraps as a unit, never
+  clips.
+
+**Still honestly not done:** no real screen reader (VoiceOver/NVDA/JAWS) was used —
+the accessibility tree was inspected programmatically (landmarks, roles, computed
+names) as a strong proxy, but that isn't the same as hearing actual announcements.
+No `prefers-reduced-motion`/`prefers-contrast` emulation was tested. No real email
+round-trip (sign up → confirm → sign in) was exercised. This closes the "keyboard"
+and "zoom" thirds of Section 18's acceptance criterion; "screen reader" remains
+open.
