@@ -1,43 +1,714 @@
 {
   "templateKey": "business-command-audit",
+  "name": "LifeCharter Business Command Audit",
   "version": "1.0.0",
-  "status": "DRAFT_AWAITING_CANONICAL_TEXT",
-  "source": {
-    "type": "to_be_authored",
-    "file": "",
-    "commit": "",
-    "recoveredAt": null,
-    "note": "No canonical 48+/12-domain Business Command Audit question bank was found anywhere (repository, full git history, Supabase, the 91-page master spec, or the standalone audit apps) as of 2026-07-05. See the Canonical Question Source Report. Populate each domain's questions[] with APPROVED wording (>=4 per domain, >=48 total), set status to APPROVED, regenerate questions.checksum.txt, then generate + run the seed migration. Do NOT invent, paraphrase, or summarize question text."
+  "status": "proposed",
+  "description": "Canonical 48-question baseline audit for the LifeCharter Command Suite. The audit evaluates 12 fixed business phases using four core questions per phase. Questions 01 and 02 primarily measure Build Completion. Questions 03 and 04 primarily measure Operating Health. Deeper AI-guided Phase Assessments are separate and generate personalized Milestones for each client.",
+  "questionCount": 48,
+  "phaseCount": 12,
+  "questionsPerPhase": 4,
+  "scoringScale": {
+    "minimum": 0,
+    "maximum": 4,
+    "options": [
+      {
+        "score": 0,
+        "label": "Not in place"
+      },
+      {
+        "score": 1,
+        "label": "Informal or just beginning"
+      },
+      {
+        "score": 2,
+        "label": "Partially defined or inconsistently used"
+      },
+      {
+        "score": 3,
+        "label": "Documented, implemented, and usually followed"
+      },
+      {
+        "score": 4,
+        "label": "Fully implemented, measured, and regularly maintained"
+      }
+    ],
+    "unscoredOptions": [
+      {
+        "key": "not_sure",
+        "label": "Not Sure",
+        "behavior": "Do not assign a numerical score. Trigger an AI clarifying question."
+      },
+      {
+        "key": "not_applicable",
+        "label": "Not Applicable",
+        "behavior": "Require a written rationale. AI must determine whether the item is legitimately not applicable before excluding it from scoring."
+      }
+    ]
   },
-  "allowedResponseTypes": ["scale_0_100", "scale", "multiple_choice", "boolean", "text", "upload"],
-  "allowedScoreCategories": ["build_completion", "operating_health"],
-  "questionTemplate": {
-    "questionKey": "",
-    "text": "",
-    "helpText": "",
-    "responseType": "scale_0_100",
-    "options": [],
-    "required": true,
-    "displayOrder": 1,
-    "scoreCategory": "build_completion",
-    "buildCompletionWeight": 0,
-    "operatingHealthWeight": 0,
-    "riskWeight": 0,
-    "evidencePrompt": "",
-    "conditionalLogic": null
+  "responseFields": [
+    {
+      "key": "score",
+      "type": "integer_or_null",
+      "required": false
+    },
+    {
+      "key": "selectedOption",
+      "type": "string",
+      "required": true
+    },
+    {
+      "key": "explanation",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "confidenceLevel",
+      "type": "enum",
+      "allowedValues": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "required": false
+    },
+    {
+      "key": "evidence",
+      "type": "text_or_reference",
+      "required": false
+    },
+    {
+      "key": "evidenceType",
+      "type": "enum",
+      "allowedValues": [
+        "Document",
+        "Uploaded File",
+        "Command Suite Record",
+        "URL",
+        "Metric",
+        "Screenshot",
+        "Connected-System Record",
+        "Client Decision",
+        "Coach Approval",
+        "Legal or Financial Review",
+        "Test Result",
+        "AI-Generated Asset"
+      ],
+      "required": false
+    },
+    {
+      "key": "evidenceUrlOrFile",
+      "type": "reference",
+      "required": false
+    },
+    {
+      "key": "aiFollowUpQuestion",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "aiInterpretation",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "clientApproval",
+      "type": "boolean_or_null",
+      "required": false
+    },
+    {
+      "key": "riskFlag",
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "contradictionFlag",
+      "type": "boolean",
+      "required": false,
+      "default": false
+    }
+  ],
+  "phaseOrder": [
+    "founder-leadership",
+    "vision-strategy",
+    "market-positioning",
+    "offers-pricing",
+    "brand-messaging",
+    "sales-revenue",
+    "client-journey-delivery",
+    "client-success-retention",
+    "marketing-audience-growth",
+    "finance-legal-risk",
+    "operations-systems-technology",
+    "team-capacity"
+  ],
+  "phases": [
+    {
+      "phaseKey": "founder-leadership",
+      "name": "Founder and Leadership",
+      "order": 1,
+      "questions": [
+        {
+          "questionKey": "founder_leadership_01",
+          "displayOrder": 1,
+          "text": "To what extent is the founder’s current role, primary responsibilities, decision authority, and highest priorities clearly defined and documented?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "founder_leadership_02",
+          "displayOrder": 2,
+          "text": "To what extent have the founder’s values, leadership principles, personal boundaries, and decision-making standards been translated into clear business practices?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "founder_leadership_03",
+          "displayOrder": 3,
+          "text": "To what extent does the founder follow a consistent leadership rhythm for reviewing priorities, making decisions, resolving issues, and maintaining accountability?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "founder_leadership_04",
+          "displayOrder": 4,
+          "text": "To what extent are founder capacity, energy, workload, delegation needs, and key-person dependency actively monitored and addressed?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": true,
+          "required": true,
+          "secondaryMeasure": "Risk"
+        }
+      ]
+    },
+    {
+      "phaseKey": "vision-strategy",
+      "name": "Vision and Strategy",
+      "order": 2,
+      "questions": [
+        {
+          "questionKey": "vision_strategy_01",
+          "displayOrder": 1,
+          "text": "To what extent are the business vision, mission, business model, long-term direction, and primary strategic choices clearly defined and documented?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "vision_strategy_02",
+          "displayOrder": 2,
+          "text": "To what extent have the business’s annual goals and current ninety-day priorities been translated into measurable outcomes, owners, and target dates?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "vision_strategy_03",
+          "displayOrder": 3,
+          "text": "To what extent are new opportunities, projects, investments, and requests evaluated against the approved strategy and stated non-priorities?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "vision_strategy_04",
+          "displayOrder": 4,
+          "text": "To what extent is strategic progress reviewed regularly and adjusted using performance data, changing conditions, and available capacity?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "market-positioning",
+      "name": "Market and Positioning",
+      "order": 3,
+      "questions": [
+        {
+          "questionKey": "market_positioning_01",
+          "displayOrder": 1,
+          "text": "To what extent is the primary ideal client clearly defined, including their characteristics, needs, goals, buying triggers, constraints, and decision factors?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "market_positioning_02",
+          "displayOrder": 2,
+          "text": "To what extent has the business documented the client’s most important problems, desired outcomes, available alternatives, competitors, and reasons for choosing this business?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "market_positioning_03",
+          "displayOrder": 3,
+          "text": "To what extent is a clear and differentiated market position consistently used in offers, marketing, sales conversations, and partnerships?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "market_positioning_04",
+          "displayOrder": 4,
+          "text": "To what extent are market assumptions validated and updated using client conversations, sales results, win-loss information, feedback, and market changes?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "offers-pricing",
+      "name": "Offers and Pricing",
+      "order": 4,
+      "questions": [
+        {
+          "questionKey": "offers_pricing_01",
+          "displayOrder": 1,
+          "text": "To what extent does each active offer have a clearly documented target client, promise, scope, deliverables, duration, delivery method, eligibility criteria, and intended outcome?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "offers_pricing_02",
+          "displayOrder": 2,
+          "text": "To what extent is pricing based on delivery costs, capacity, margin, client value, payment terms, and the financial goals of the business?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "offers_pricing_03",
+          "displayOrder": 3,
+          "text": "To what extent do marketing, sales, contracts, onboarding, and delivery consistently use the current approved version of each offer?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "offers_pricing_04",
+          "displayOrder": 4,
+          "text": "To what extent are offer performance and pricing reviewed using conversion, profitability, delivery effort, client outcomes, retention, and capacity data?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "brand-messaging",
+      "name": "Brand and Messaging",
+      "order": 5,
+      "questions": [
+        {
+          "questionKey": "brand_messaging_01",
+          "displayOrder": 1,
+          "text": "To what extent are the brand voice, core promise, message pillars, approved claims, proof points, and primary calls to action clearly documented?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "brand_messaging_02",
+          "displayOrder": 2,
+          "text": "To what extent is messaging intentionally aligned with the ideal client’s problems, desired outcomes, awareness level, objections, and decision journey?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "brand_messaging_03",
+          "displayOrder": 3,
+          "text": "To what extent is the approved brand and messaging used consistently across the website, marketing, sales, client communications, and delivery materials?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "brand_messaging_04",
+          "displayOrder": 4,
+          "text": "To what extent is messaging effectiveness reviewed and improved using audience response, engagement, lead quality, conversion, and client feedback?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "sales-revenue",
+      "name": "Sales and Revenue",
+      "order": 6,
+      "questions": [
+        {
+          "questionKey": "sales_revenue_01",
+          "displayOrder": 1,
+          "text": "To what extent are the sales pipeline stages, qualification criteria, ownership, required information, and next-step rules clearly defined?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "sales_revenue_02",
+          "displayOrder": 2,
+          "text": "To what extent does the business have an approved and repeatable process for discovery, sales conversations, objection handling, proposals, follow-up, and closing?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "sales_revenue_03",
+          "displayOrder": 3,
+          "text": "To what extent does the sales system accurately capture opportunities, activities, next actions, forecast values, and reasons opportunities are won or lost?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "sales_revenue_04",
+          "displayOrder": 4,
+          "text": "To what extent are revenue targets, conversion rates, pipeline coverage, sales-cycle length, average sale value, and revenue risks actively monitored and managed?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "client-journey-delivery",
+      "name": "Client Journey and Delivery",
+      "order": 7,
+      "questions": [
+        {
+          "questionKey": "client_journey_delivery_01",
+          "displayOrder": 1,
+          "text": "To what extent is the complete client journey documented from purchase and onboarding through delivery, completion, transition, renewal, or offboarding?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_journey_delivery_02",
+          "displayOrder": 2,
+          "text": "To what extent are delivery phases, milestones, responsibilities, resources, timelines, communication standards, and quality expectations clearly defined?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_journey_delivery_03",
+          "displayOrder": 3,
+          "text": "To what extent do clients consistently receive the promised experience and outcomes without unnecessary improvisation or dependence on the founder?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_journey_delivery_04",
+          "displayOrder": 4,
+          "text": "To what extent are delivery delays, scope changes, missed expectations, quality concerns, and client risks detected and resolved through a consistent process?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "client-success-retention",
+      "name": "Client Success and Retention",
+      "order": 8,
+      "questions": [
+        {
+          "questionKey": "client_success_retention_01",
+          "displayOrder": 1,
+          "text": "To what extent are client success criteria, expected outcomes, progress indicators, health signals, and completion standards defined for each offer?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_success_retention_02",
+          "displayOrder": 2,
+          "text": "To what extent does the business have a documented process for progress reviews, risk intervention, renewals, expansion, referrals, testimonials, and client transition?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_success_retention_03",
+          "displayOrder": 3,
+          "text": "To what extent are client completion, satisfaction, outcomes, retention, renewal, expansion, referral, and cancellation patterns consistently measured?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "client_success_retention_04",
+          "displayOrder": 4,
+          "text": "To what extent are at-risk clients identified early, supported appropriately, and used to improve the client experience and delivery system?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "marketing-audience-growth",
+      "name": "Marketing and Audience Growth",
+      "order": 9,
+      "questions": [
+        {
+          "questionKey": "marketing_audience_01",
+          "displayOrder": 1,
+          "text": "To what extent are the target audience, marketing objectives, primary channels, content pillars, lead magnets, campaigns, and calls to action clearly defined?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "marketing_audience_02",
+          "displayOrder": 2,
+          "text": "To what extent does the business have a repeatable system for planning, creating, approving, publishing, distributing, and repurposing marketing content?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "marketing_audience_03",
+          "displayOrder": 3,
+          "text": "To what extent can the business identify which channels, campaigns, content, lead magnets, and partnerships generate qualified leads and revenue?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "marketing_audience_04",
+          "displayOrder": 4,
+          "text": "To what extent is the marketing plan adjusted using performance data, audience feedback, lead quality, available capacity, and brand alignment?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "finance-legal-risk",
+      "name": "Finance, Legal, and Risk",
+      "order": 10,
+      "questions": [
+        {
+          "questionKey": "finance_legal_risk_01",
+          "displayOrder": 1,
+          "text": "To what extent does the business maintain a current and reliable view of revenue, expenses, cash, margins, obligations, accounts receivable, and financial runway?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "finance_legal_risk_02",
+          "displayOrder": 2,
+          "text": "To what extent are budgeting, invoicing, payment collection, reconciliation, financial reporting, tax responsibilities, and approval controls clearly assigned and documented?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "finance_legal_risk_03",
+          "displayOrder": 3,
+          "text": "To what extent are contracts, intellectual property protections, privacy practices, insurance, licenses, compliance obligations, and record-retention requirements current and consistently followed?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": true,
+          "required": true,
+          "secondaryMeasure": "Risk"
+        },
+        {
+          "questionKey": "finance_legal_risk_04",
+          "displayOrder": 4,
+          "text": "To what extent are material financial, legal, compliance, data, continuity, and operational risks documented, assigned, mitigated, and regularly reviewed?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": true,
+          "required": true,
+          "secondaryMeasure": "Risk"
+        }
+      ]
+    },
+    {
+      "phaseKey": "operations-systems-technology",
+      "name": "Operations, Systems, and Technology",
+      "order": 11,
+      "questions": [
+        {
+          "questionKey": "operations_systems_technology_01",
+          "displayOrder": 1,
+          "text": "To what extent are the business’s core recurring workflows documented with clear triggers, owners, steps, standards, exceptions, and completion requirements?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "operations_systems_technology_02",
+          "displayOrder": 2,
+          "text": "To what extent do the current systems, tools, integrations, and data structures support reliable work without unnecessary duplication, confusion, or manual re-entry?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "operations_systems_technology_03",
+          "displayOrder": 3,
+          "text": "To what extent are automations, integrations, permissions, backups, security controls, and critical technology monitored and maintained for reliability?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": true,
+          "required": true,
+          "secondaryMeasure": "Risk"
+        },
+        {
+          "questionKey": "operations_systems_technology_04",
+          "displayOrder": 4,
+          "text": "To what extent is operational performance reviewed using measures such as cycle time, errors, bottlenecks, service levels, workload, and process failures?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        }
+      ]
+    },
+    {
+      "phaseKey": "team-capacity",
+      "name": "Team and Capacity",
+      "order": 12,
+      "questions": [
+        {
+          "questionKey": "team_capacity_01",
+          "displayOrder": 1,
+          "text": "To what extent are current and anticipated roles, responsibilities, decision rights, reporting relationships, and ownership boundaries clearly documented?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "team_capacity_02",
+          "displayOrder": 2,
+          "text": "To what extent does the business maintain a reliable view of workload, available capacity, delegation, role coverage, and upcoming resource needs?",
+          "primaryMeasure": "Build Completion",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "team_capacity_03",
+          "displayOrder": 3,
+          "text": "To what extent are hiring, selection, onboarding, training, performance expectations, feedback, and accountability handled through consistent processes?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": false,
+          "required": true
+        },
+        {
+          "questionKey": "team_capacity_04",
+          "displayOrder": 4,
+          "text": "To what extent are capacity risks, skill gaps, unclear ownership, founder dependency, and single points of failure identified and addressed before they disrupt the business?",
+          "primaryMeasure": "Operating Health",
+          "riskEligible": true,
+          "required": true,
+          "secondaryMeasure": "Risk"
+        }
+      ]
+    }
+  ],
+  "scoringRules": {
+    "phaseBuildCompletion": {
+      "formula": "Average the valid numerical scores for the two Build Completion questions in the phase, divide by 4, then multiply by 100.",
+      "exclude": [
+        "not_sure",
+        "approved_not_applicable"
+      ],
+      "minimumRequiredScores": 1
+    },
+    "phaseOperatingHealth": {
+      "formula": "Average the valid numerical scores for the two Operating Health questions in the phase.",
+      "bands": [
+        {
+          "minimum": 0.0,
+          "maximum": 1.49,
+          "label": "At Risk"
+        },
+        {
+          "minimum": 1.5,
+          "maximum": 2.49,
+          "label": "Needs Attention"
+        },
+        {
+          "minimum": 2.5,
+          "maximum": 3.49,
+          "label": "Stable"
+        },
+        {
+          "minimum": 3.5,
+          "maximum": 4.0,
+          "label": "Strong"
+        }
+      ],
+      "fallback": "Not Assessed",
+      "exclude": [
+        "not_sure",
+        "approved_not_applicable"
+      ]
+    },
+    "riskBehavior": {
+      "description": "Questions marked riskEligible may create a risk flag based on low score, narrative evidence, contradictions, missing controls, or AI-reviewed evidence.",
+      "automaticFlagSuggestion": "Suggest risk review when score is 0 or 1, but require rules or AI rationale."
+    }
   },
-  "domains": [
-    { "domainKey": "founder-leadership", "code": "founder_leadership", "name": "Founder and Leadership", "order": 1, "questions": [] },
-    { "domainKey": "vision-strategy", "code": "vision_strategy", "name": "Vision and Strategy", "order": 2, "questions": [] },
-    { "domainKey": "market-positioning", "code": "market_positioning", "name": "Market and Positioning", "order": 3, "questions": [] },
-    { "domainKey": "offers-pricing", "code": "offers_pricing", "name": "Offers and Pricing", "order": 4, "questions": [] },
-    { "domainKey": "brand-messaging", "code": "brand_messaging", "name": "Brand and Messaging", "order": 5, "questions": [] },
-    { "domainKey": "marketing-audience-growth", "code": "marketing_growth", "name": "Marketing and Audience Growth", "order": 6, "questions": [] },
-    { "domainKey": "sales-revenue", "code": "sales_revenue", "name": "Sales and Revenue", "order": 7, "questions": [] },
-    { "domainKey": "client-journey-delivery", "code": "client_journey_delivery", "name": "Client Journey and Delivery", "order": 8, "questions": [] },
-    { "domainKey": "client-success-retention", "code": "client_success_retention", "name": "Client Success and Retention", "order": 9, "questions": [] },
-    { "domainKey": "operations-systems-technology", "code": "operations_systems_technology", "name": "Operations, Systems, and Technology", "order": 10, "questions": [] },
-    { "domainKey": "team-capacity", "code": "team_capacity", "name": "Team and Capacity", "order": 11, "questions": [] },
-    { "domainKey": "finance-legal-risk", "code": "finance_legal_risk", "name": "Finance, Legal, and Risk", "order": 12, "questions": [] }
+  "aiBehavior": {
+    "allowed": [
+      "Ask adaptive follow-up questions",
+      "Interpret narrative answers",
+      "Identify contradictions",
+      "Evaluate evidence quality",
+      "Summarize findings",
+      "Explain scores",
+      "Identify dependencies",
+      "Recommend priorities",
+      "Generate reports",
+      "Recommend next actions"
+    ],
+    "notAllowed": [
+      "Paraphrase, shorten, merge, or rewrite canonical question text",
+      "Replace a canonical question with an adaptive question",
+      "Invent the underlying scoring mathematics",
+      "Treat this 48-question audit as the complete Phase Assessment",
+      "Silently approve Not Applicable responses",
+      "Silently alter approved audit wording"
+    ],
+    "adaptiveQuestionStorage": "Store adaptive AI follow-up questions separately from canonical questions. Link them to the canonical question and audit run."
+  },
+  "migrationInstructions": {
+    "canonicalStatus": "Treat this file as the proposed canonical Business Command Audit Question Bank, Version 1.0.0. Change status to approved only after formal approval.",
+    "preserveExactText": true,
+    "seedTargetRecommendation": "src/config/business-command-audit/v1/questions.json",
+    "snapshotProtection": "Generate a checksum or snapshot test for all 48 canonical question strings so wording cannot change silently.",
+    "databaseRequirements": [
+      "Store template key and version",
+      "Store phase key and order",
+      "Store question key and display order",
+      "Store exact canonical text",
+      "Store primary measure",
+      "Store optional secondary measure",
+      "Store risk eligibility",
+      "Store required status",
+      "Store response options independently from question wording"
+    ]
+  },
+  "implementationNotes": [
+    "The initial Business Command Audit uses these 48 questions to identify Phase scores, strengths, risks, dependencies, and priority order.",
+    "Each of the 12 Phases must later have a deeper AI-guided Phase Assessment.",
+    "The deeper Phase Assessment generates the personalized Milestones required for that client.",
+    "Questions 01 and 02 in each Phase measure Build Completion.",
+    "Questions 03 and 04 in each Phase measure Operating Health.",
+    "Questions explicitly marked with a secondary Risk measure may also generate critical risk findings.",
+    "Not Sure must trigger clarification and must not receive a score.",
+    "Not Applicable requires rationale and approval before exclusion from scoring."
   ]
 }
