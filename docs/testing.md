@@ -1118,6 +1118,15 @@ workspace user ("Babs' Test"):
   focus outlines on both plain links and Card-wrapped StatTile links, in a logical
   tab order — the first time Section 18's "keyboard... smoke test" acceptance
   criterion was verified by actually pressing Tab, not just reviewing the CSS.
+- **Spot-checked the semantics a screen reader actually depends on**, not just
+  visible focus rings: at each of several real Tab stops, inspected
+  `document.activeElement` directly rather than trusting a static accessibility-tree
+  read. Confirmed the skip link's accessible name and target, `Build`'s
+  `aria-pressed="true"` correctly reflecting the active mode, and — checking every
+  nav link at once — that `aria-current="page"` is present on exactly one link
+  (`Command Center`, the page actually being viewed) and absent from the other 10.
+  This doesn't replace hearing real VoiceOver/NVDA output, but it's a substantially
+  stronger check than the structural review this was previously limited to.
 - **A real 200% zoom/reflow test** (Section 18's "zoom" criterion) found a genuine,
   if minor, bug: `ModeToggle` (Build/Run) and `ThemeToggle` (Light/Dark) wrap their
   two buttons in a `div` with `overflow-hidden` (needed to clip the rounded pill
