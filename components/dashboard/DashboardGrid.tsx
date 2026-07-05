@@ -53,7 +53,11 @@ export function DashboardGrid({
       const targetIndex = index + direction;
       if (targetIndex < 0 || targetIndex >= prev.length) return prev;
       const next = [...prev];
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      // Both indices were just bounds-checked above (0 <= targetIndex <
+      // prev.length, and index came from indexOf on this same array), but
+      // noUncheckedIndexedAccess still types indexed reads as possibly
+      // undefined — the assertions are safe given that check, not a bypass.
+      [next[index], next[targetIndex]] = [next[targetIndex]!, next[index]!];
       return next;
     });
   }
