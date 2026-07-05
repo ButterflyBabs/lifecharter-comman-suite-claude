@@ -129,7 +129,7 @@ export default async function RoadmapPlanPage() {
           </div>
 
           {totalCount > 0 && (
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--card-border)]">
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--card-bg-hover)]">
               <div
                 className="h-full rounded-full bg-warm-gold transition-[width]"
                 style={{ width: `${percentDone}%` }}
