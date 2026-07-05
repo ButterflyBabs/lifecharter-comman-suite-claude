@@ -1,0 +1,43 @@
+{
+  "templateKey": "business-command-audit",
+  "version": "1.0.0",
+  "status": "DRAFT_AWAITING_CANONICAL_TEXT",
+  "source": {
+    "type": "to_be_authored",
+    "file": "",
+    "commit": "",
+    "recoveredAt": null,
+    "note": "No canonical 48+/12-domain Business Command Audit question bank was found anywhere (repository, full git history, Supabase, the 91-page master spec, or the standalone audit apps) as of 2026-07-05. See the Canonical Question Source Report. Populate each domain's questions[] with APPROVED wording (>=4 per domain, >=48 total), set status to APPROVED, regenerate questions.checksum.txt, then generate + run the seed migration. Do NOT invent, paraphrase, or summarize question text."
+  },
+  "allowedResponseTypes": ["scale_0_100", "scale", "multiple_choice", "boolean", "text", "upload"],
+  "allowedScoreCategories": ["build_completion", "operating_health"],
+  "questionTemplate": {
+    "questionKey": "",
+    "text": "",
+    "helpText": "",
+    "responseType": "scale_0_100",
+    "options": [],
+    "required": true,
+    "displayOrder": 1,
+    "scoreCategory": "build_completion",
+    "buildCompletionWeight": 0,
+    "operatingHealthWeight": 0,
+    "riskWeight": 0,
+    "evidencePrompt": "",
+    "conditionalLogic": null
+  },
+  "domains": [
+    { "domainKey": "founder-leadership", "code": "founder_leadership", "name": "Founder and Leadership", "order": 1, "questions": [] },
+    { "domainKey": "vision-strategy", "code": "vision_strategy", "name": "Vision and Strategy", "order": 2, "questions": [] },
+    { "domainKey": "market-positioning", "code": "market_positioning", "name": "Market and Positioning", "order": 3, "questions": [] },
+    { "domainKey": "offers-pricing", "code": "offers_pricing", "name": "Offers and Pricing", "order": 4, "questions": [] },
+    { "domainKey": "brand-messaging", "code": "brand_messaging", "name": "Brand and Messaging", "order": 5, "questions": [] },
+    { "domainKey": "marketing-audience-growth", "code": "marketing_growth", "name": "Marketing and Audience Growth", "order": 6, "questions": [] },
+    { "domainKey": "sales-revenue", "code": "sales_revenue", "name": "Sales and Revenue", "order": 7, "questions": [] },
+    { "domainKey": "client-journey-delivery", "code": "client_journey_delivery", "name": "Client Journey and Delivery", "order": 8, "questions": [] },
+    { "domainKey": "client-success-retention", "code": "client_success_retention", "name": "Client Success and Retention", "order": 9, "questions": [] },
+    { "domainKey": "operations-systems-technology", "code": "operations_systems_technology", "name": "Operations, Systems, and Technology", "order": 10, "questions": [] },
+    { "domainKey": "team-capacity", "code": "team_capacity", "name": "Team and Capacity", "order": 11, "questions": [] },
+    { "domainKey": "finance-legal-risk", "code": "finance_legal_risk", "name": "Finance, Legal, and Risk", "order": 12, "questions": [] }
+  ]
+}
