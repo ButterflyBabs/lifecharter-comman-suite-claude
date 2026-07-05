@@ -27,7 +27,7 @@ export async function Header() {
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--card-border)] bg-[var(--surface-bg)] px-4 py-3">
       <div className="flex items-center gap-4">
         <Link href="/command/today" className="lc-title text-lg">
-          LifeCharter
+          LifeCharter Command Suite
         </Link>
         {currentWorkspace ? (
           <span aria-label="Current workspace" className="text-sm text-[var(--text-muted)]">
