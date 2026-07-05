@@ -33,4 +33,6 @@ export {
   IconEyeOff,
   IconLayoutGrid,
   IconLayoutList,
+  IconCircle,
+  IconLock,
 } from "./icons";

@@ -114,6 +114,23 @@ export function IconClock() {
   );
 }
 
+export function IconCircle() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
+export function IconLock() {
+  return (
+    <svg {...base} aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
 export function IconDollarSign() {
   return (
     <svg {...base} aria-hidden="true">
