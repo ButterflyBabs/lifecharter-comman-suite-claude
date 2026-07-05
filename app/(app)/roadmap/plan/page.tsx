@@ -4,6 +4,7 @@ import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { startAudit } from "@/app/(app)/roadmap/audit/actions";
 import { reopenAudit } from "./actions";
 import { RoadmapExecutionView } from "@/components/roadmap/RoadmapExecutionView";
+import { RoadmapJourney } from "@/components/roadmap/RoadmapJourney";
 import { Card, PageHeader, StatTile, IconGauge, IconFlag, IconCompass } from "@/components/ui";
 
 type PerDomainScore = {
@@ -74,6 +75,11 @@ export default async function RoadmapPlanPage() {
         <PageHeader
           title="Your Business Command Audit"
           description="A structured review of the twelve areas that determine whether your business runs on you or on systems. It takes about 25–35 minutes, autosaves as you go, and you can attach evidence for any answer. Your responses feed the AI that builds your prioritized Roadmap — the AI interprets and explains, it never invents your scores."
+        />
+
+        <RoadmapJourney
+          stage={1}
+          next="Start your Business Command Audit — score four quick questions for each of the 12 areas. It takes about 25–35 minutes and autosaves as you go, so you can stop and resume anytime."
         />
 
         <Card className="mt-6">
@@ -171,6 +177,11 @@ export default async function RoadmapPlanPage() {
     return (
       <div className="max-w-4xl p-8">
         <PageHeader title="Your Business Command Audit" description="You have an audit in progress." />
+        <RoadmapJourney
+          stage={1}
+          auditPct={pct}
+          next="Resume your audit and finish scoring the remaining areas. Your progress is saved automatically."
+        />
         <Card className="mt-6">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-deep-indigo">{pct}% complete</span>
@@ -200,6 +211,11 @@ export default async function RoadmapPlanPage() {
         <PageHeader
           title="Your findings are ready to review"
           description="We've scored every area from your answers and drafted your findings. Review and approve them to generate your prioritized Roadmap."
+        />
+
+        <RoadmapJourney
+          stage={2}
+          next="Review your findings, then approve them to turn your scores and gaps into a prioritized roadmap."
         />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -264,10 +280,15 @@ export default async function RoadmapPlanPage() {
         }
       />
 
+      <RoadmapJourney
+        stage={4}
+        next="Work through your roadmap milestones below, one phase at a time — mark each done with evidence to unlock the next."
+      />
+
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <div
           className="flex h-20 w-20 flex-col items-center justify-center rounded-full text-white"
-          style={{ background: "var(--deep-indigo, #1e1b4b)" }}
+          style={{ background: "#1f315b" }}
         >
           <span className="text-2xl font-semibold">{overall}%</span>
           <span className="text-[10px] uppercase tracking-wide opacity-80">Overall</span>

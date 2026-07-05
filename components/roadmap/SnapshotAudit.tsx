@@ -142,7 +142,7 @@ export function SnapshotAudit({ phases }: { phases: SnapshotPhase[] }) {
         <div className="mt-6 flex items-center gap-4">
           <div
             className="flex h-24 w-24 flex-col items-center justify-center rounded-full text-white"
-            style={{ background: "var(--deep-indigo, #1e1b4b)" }}
+            style={{ background: "#1f315b" }}
           >
             <span className="text-3xl font-semibold">{result.overall}</span>
             <span className="text-[10px] uppercase tracking-wide opacity-80">of 100</span>
