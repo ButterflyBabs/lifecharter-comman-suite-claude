@@ -341,7 +341,7 @@ export default async function CommandTodayPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="max-w-5xl p-8">
       <PageHeader
         title="Today"
         description={mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
