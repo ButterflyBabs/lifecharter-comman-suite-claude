@@ -20,7 +20,7 @@ import {
 
 const NAV_ICONS: Record<string, () => JSX.Element> = {
   "/command/today": IconCompass,
-  "/roadmap/setup": IconMap,
+  "/roadmap/plan": IconMap,
   "/architecture/founder": IconBuilding,
   "/revenue/overview": IconTrendingUp,
   "/clients/overview": IconUsers,

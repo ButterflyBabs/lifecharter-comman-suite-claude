@@ -3,7 +3,7 @@
 // Appendix A's segment names win over Section 5's).
 export const PRIMARY_NAV = [
   { label: "Command Center", href: "/command/today" },
-  { label: "My Roadmap", href: "/roadmap/setup" },
+  { label: "My Roadmap", href: "/roadmap/plan" },
   { label: "Business Architecture", href: "/architecture/founder" },
   { label: "Revenue Engine", href: "/revenue/overview" },
   { label: "Client Experience", href: "/clients/overview" },
