@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { getUserWorkspaces } from "@/lib/data/workspace";
+import { getTheme } from "@/lib/theme/actions";
 import { ModeToggle } from "./ModeToggle";
 import { ThemeToggle } from "./ThemeToggle";
 import { ProfileMenu } from "./ProfileMenu";
@@ -14,6 +16,8 @@ export async function Header() {
 
   const workspaces = await getUserWorkspaces();
   const currentWorkspace = workspaces[0];
+  const theme = await getTheme();
+  const logoSrc = theme === "dark" ? "/brand/logo-dark.png" : "/brand/logo-light.png";
 
   const { count: unreadCount } = user
     ? await supabase
@@ -26,8 +30,8 @@ export async function Header() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--card-border)] bg-[var(--surface-bg)] px-4 py-3">
       <div className="flex items-center gap-4">
-        <Link href="/command/today" className="lc-title text-lg">
-          LifeCharter Command Suite
+        <Link href="/command/today" className="flex items-center" aria-label="LifeCharter Command Suite — go to Command Center">
+          <Image src={logoSrc} alt="LifeCharter Command Suite" width={132} height={35} priority />
         </Link>
         {currentWorkspace ? (
           <span aria-label="Current workspace" className="text-sm text-[var(--text-muted)]">
