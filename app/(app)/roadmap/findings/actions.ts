@@ -27,3 +27,17 @@ export async function approveFindingsAction(instanceId: string) {
   revalidatePath("/roadmap/plan");
   redirect("/roadmap/plan");
 }
+
+// Deeper per-phase AI assessment: generate personalized milestone suggestions
+// for one phase. Best-effort (no-op without a BYOK credential); fully traced.
+export async function generatePhaseAssessmentAction(instanceId: string, domainId: string) {
+  const supabase = await createClient();
+  try {
+    await supabase.functions.invoke("audit-phase-assessment", {
+      body: { audit_instance_id: instanceId, domain_id: domainId },
+    });
+  } catch {
+    // deterministic audit unaffected
+  }
+  revalidatePath("/roadmap/findings");
+}

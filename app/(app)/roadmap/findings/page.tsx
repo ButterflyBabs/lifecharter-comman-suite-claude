@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { approveFindingsAction } from "./actions";
+import { approveFindingsAction, generatePhaseAssessmentAction } from "./actions";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
 
 type PerDomainScore = {
@@ -80,6 +80,12 @@ export default async function FindingsPage() {
 
   const sorted = [...perDomain].sort((a, b) => a.average - b.average);
 
+  const { data: phaseRows } = await supabase
+    .from("audit_phase_assessments")
+    .select("domain_id, narrative, generated_milestones, status")
+    .eq("audit_instance_id", instance.id);
+  const assessmentByDomain = new Map((phaseRows ?? []).map((r) => [r.domain_id, r]));
+
   return (
     <div className="max-w-3xl p-8">
       <PageHeader
@@ -127,6 +133,49 @@ export default async function FindingsPage() {
           </tbody>
         </table>
       </div>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-deep-indigo">Phase deep-dives</h2>
+        <p className="mt-1 text-sm text-soft-taupe">
+          Generate a personalized milestone plan for any phase. Uses your workspace AI key; the plan is AI-generated and
+          traced.
+        </p>
+        <ul className="mt-3 space-y-3">
+          {sorted.map((d) => {
+            const a = assessmentByDomain.get(d.domain_id) as
+              | { narrative?: string | null; generated_milestones?: unknown }
+              | undefined;
+            const ms = (a?.generated_milestones as { title?: string; definition_of_done?: string }[] | null) ?? [];
+            return (
+              <li key={d.domain_id} className="lc-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-deep-indigo">{d.domain_name}</p>
+                  <form action={generatePhaseAssessmentAction.bind(null, instance.id, d.domain_id)}>
+                    <button
+                      type="submit"
+                      className="rounded border border-soft-taupe px-3 py-1 text-xs text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
+                    >
+                      {a ? "Regenerate plan" : "Generate milestone plan"}
+                    </button>
+                  </form>
+                </div>
+                {a?.narrative && <p className="mt-2 text-sm text-soft-taupe">{a.narrative}</p>}
+                {ms.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {ms.map((m, i) => (
+                      <li key={i} className="text-sm text-deep-indigo">
+                        • {m.title}
+                        {m.definition_of_done ? ` — done when: ${m.definition_of_done}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+          {sorted.length === 0 && <li className="text-sm text-soft-taupe">Scores are being prepared.</li>}
+        </ul>
+      </section>
 
       {summary?.narrative ? (
         <Card className="mt-6">

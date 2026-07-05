@@ -35,6 +35,8 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = pathname === "/login" || pathname === "/sign-up" || pathname.startsWith("/auth/");
   const isPortalRoute = pathname.startsWith("/portal");
   const isPortalAuthRoute = pathname === "/portal/login";
+  // Public lead-magnet snapshot — no session required.
+  const isPublicRoute = pathname === "/business-command-audit";
 
   // Portal (client-facing) routes are a separate identity class from the
   // workspace-member app — an unauthenticated visitor there goes to
@@ -56,7 +58,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
