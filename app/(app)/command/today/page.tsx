@@ -1,7 +1,11 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
 import { getMode } from "@/lib/mode/actions";
+import { getDashboardLayout } from "@/lib/dashboard/get-layout";
+import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import type { WidgetDefinition } from "@/lib/dashboard/types";
 import {
   Card,
   PageHeader,
@@ -20,15 +24,20 @@ import {
   IconClock,
 } from "@/components/ui";
 
-// Section 16.4 (Responsive requirements) names an explicit mobile priority
-// order: current priority, today's work, decisions and approvals, client
-// and revenue alerts, roadmap progress, capacity, then secondary metrics
-// and history. This page follows that order top to bottom (Tailwind's
-// mobile-first stacking means the DOM order below is the actual mobile
-// reading order, not just a desktop grid that happens to reflow) and
-// collapses the least-urgent items into a single <details> per Section
-// 16.3's "one primary action per page state, avoid decorative metric
-// clutter" guidance.
+// Command Center's widgets are user-reorderable/hideable (DashboardGrid,
+// backed by dashboard_layouts) rather than a fixed section order — the
+// "Current priority" banner above them stays fixed page furniture, same
+// as a page header, since it's the one thing that should never be hidden
+// or buried by a customization choice.
+const WIDGETS: WidgetDefinition[] = [
+  { key: "todays_work", title: "Today's Work" },
+  { key: "decisions_approvals", title: "Decisions and Approvals" },
+  { key: "client_revenue_alerts", title: "Client and Revenue Alerts" },
+  { key: "roadmap_progress", title: "Roadmap Progress" },
+  { key: "capacity", title: "Capacity" },
+  { key: "secondary_metrics", title: "Secondary Metrics and History" },
+];
+
 export default async function CommandTodayPage() {
   const workspaceId = await getCurrentWorkspaceId();
 
@@ -92,6 +101,7 @@ export default async function CommandTodayPage() {
     { count: overdueInvoices },
     { count: failedPayments },
     { data: capacityAllocations },
+    savedLayout,
   ] = await Promise.all([
     supabase.from("workspace_subscriptions").select("status").eq("workspace_id", workspaceId).maybeSingle(),
     supabase
@@ -143,6 +153,7 @@ export default async function CommandTodayPage() {
       .from("capacity_allocations")
       .select("planned_hours, actual_hours")
       .eq("workspace_id", workspaceId),
+    getDashboardLayout("command_center"),
   ]);
 
   const needsActivation = !subscription || !["active", "trialing", "past_due"].includes(subscription.status);
@@ -165,34 +176,10 @@ export default async function CommandTodayPage() {
       ? `${mostOverdueTask.title} was due ${new Date(mostOverdueTask.due_at).toLocaleDateString()}`
       : "Nothing urgent right now.";
 
-  return (
-    <div className="p-8">
-      <PageHeader
-        title="Today"
-        description={mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
-      />
-
-      {/* 1. Current priority */}
-      <Card className="mt-4 flex items-center gap-4 text-sm">
-        <IconBadge tone={oldestBlocker ? "error" : mostOverdueTask ? "warning" : "neutral"}>
-          {oldestBlocker ? <IconFlag /> : mostOverdueTask ? <IconClipboard /> : <IconCompass />}
-        </IconBadge>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-soft-taupe">Current priority</p>
-          <p className="mt-1 text-base font-medium">{currentPriority}</p>
-        </div>
-      </Card>
-
-      {needsActivation && (
-        <Card className="mt-4 flex items-center justify-between text-sm">
-          <span>This workspace has no active subscription yet — choose a plan to unlock full usage limits.</span>
-          <Link href="/settings/billing" className="lc-btn-secondary text-xs">Choose a plan</Link>
-        </Card>
-      )}
-
-      {/* 2. Today's work */}
-      {mode === "run" && (
-        <section className="mt-6">
+  const widgetContent: Record<string, ReactNode> = {
+    todays_work:
+      mode === "run" ? (
+        <section>
           <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
             <IconBadge size="sm"><IconClipboard /></IconBadge>
             Due today or overdue
@@ -209,10 +196,8 @@ export default async function CommandTodayPage() {
             <p className="mt-2 text-sm text-soft-taupe">Nothing due or overdue.</p>
           )}
         </section>
-      )}
-
-      {mode === "build" && activePhase && (
-        <section className="mt-6">
+      ) : activePhase ? (
+        <section>
           <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
             <IconBadge size="sm"><IconMap /></IconBadge>
             Active roadmap phase: {activePhase.name}
@@ -227,10 +212,12 @@ export default async function CommandTodayPage() {
             ))}
           </ul>
         </section>
-      )}
+      ) : (
+        <p className="text-sm text-soft-taupe">No active roadmap phase.</p>
+      ),
 
-      {/* 3. Decisions and approvals */}
-      <section className="mt-6">
+    decisions_approvals: (
+      <section>
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
           <IconBadge size="sm"><IconCheckCircle /></IconBadge>
           Decisions and approvals
@@ -254,9 +241,10 @@ export default async function CommandTodayPage() {
           </Link>
         </div>
       </section>
+    ),
 
-      {/* 4. Client and revenue alerts */}
-      <section className="mt-6">
+    client_revenue_alerts: (
+      <section>
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
           <IconBadge size="sm"><IconUsers /></IconBadge>
           Client and revenue alerts
@@ -288,9 +276,10 @@ export default async function CommandTodayPage() {
           </Link>
         </div>
       </section>
+    ),
 
-      {/* 5. Roadmap progress */}
-      <section className="mt-6">
+    roadmap_progress: (
+      <section>
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
           <IconBadge size="sm"><IconMap /></IconBadge>
           Roadmap progress
@@ -311,9 +300,10 @@ export default async function CommandTodayPage() {
           </div>
         </Card>
       </section>
+    ),
 
-      {/* 6. Capacity */}
-      <section className="mt-6">
+    capacity: (
+      <section>
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
           <IconBadge size="sm"><IconGauge /></IconBadge>
           Capacity
@@ -324,13 +314,14 @@ export default async function CommandTodayPage() {
           </Link>
         </div>
       </section>
+    ),
 
-      {/* 7. Secondary metrics and history */}
-      <details className="mt-8">
-        <summary className="flex cursor-pointer items-center gap-2 text-sm text-deep-indigo underline">
+    secondary_metrics: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
           <IconBadge size="sm"><IconClock /></IconBadge>
           Secondary metrics and history
-        </summary>
+        </h2>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatTile
             value={blockers?.length ?? 0}
@@ -345,7 +336,37 @@ export default async function CommandTodayPage() {
             </Link>
           </Card>
         </div>
-      </details>
+      </section>
+    ),
+  };
+
+  return (
+    <div className="p-8">
+      <PageHeader
+        title="Today"
+        description={mode === "build" ? "Build Mode — emphasizing roadmap progress" : "Run Mode — emphasizing today's operating cadence"}
+      />
+
+      <Card className="mt-4 flex items-center gap-4 text-sm">
+        <IconBadge tone={oldestBlocker ? "error" : mostOverdueTask ? "warning" : "neutral"}>
+          {oldestBlocker ? <IconFlag /> : mostOverdueTask ? <IconClipboard /> : <IconCompass />}
+        </IconBadge>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-soft-taupe">Current priority</p>
+          <p className="mt-1 text-base font-medium">{currentPriority}</p>
+        </div>
+      </Card>
+
+      {needsActivation && (
+        <Card className="mt-4 flex items-center justify-between text-sm">
+          <span>This workspace has no active subscription yet — choose a plan to unlock full usage limits.</span>
+          <Link href="/settings/billing" className="lc-btn-secondary text-xs">Choose a plan</Link>
+        </Card>
+      )}
+
+      <div className="mt-6">
+        <DashboardGrid pageKey="command_center" widgets={WIDGETS} widgetContent={widgetContent} savedLayout={savedLayout} />
+      </div>
     </div>
   );
 }

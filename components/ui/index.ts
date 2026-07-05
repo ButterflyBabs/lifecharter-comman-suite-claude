@@ -26,4 +26,11 @@ export {
   IconWrench,
   IconPlug,
   IconCalendar,
+  IconSettings,
+  IconChevronLeft,
+  IconGripVertical,
+  IconEye,
+  IconEyeOff,
+  IconLayoutGrid,
+  IconLayoutList,
 } from "./icons";
