@@ -1,7 +1,20 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+
+// "Update My Answers" (State C): reopen a findings_pending run for editing and
+// return to the engine. RLS scopes this to the caller's workspace.
+export async function reopenAudit(instanceId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("audit_instances")
+    .update({ status: "in_progress" })
+    .eq("id", instanceId)
+    .in("status", ["findings_pending", "completed"]);
+  redirect("/roadmap/audit");
+}
 
 export async function completeMilestone(milestoneId: string, formData: FormData) {
   const note = formData.get("note") as string;

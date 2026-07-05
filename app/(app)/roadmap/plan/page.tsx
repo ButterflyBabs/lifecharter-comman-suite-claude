@@ -1,23 +1,37 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
-import { completeMilestone, completePhase } from "./actions";
-import {
-  Card,
-  PageHeader,
-  PathwayRow,
-  StatusBadge,
-  IconCheckCircle,
-  IconClock,
-  IconCircle,
-  IconLock,
-} from "@/components/ui";
-import type { PathwayItem } from "@/components/ui";
+import { startAudit } from "@/app/(app)/roadmap/audit/actions";
+import { reopenAudit } from "./actions";
+import { RoadmapExecutionView } from "@/components/roadmap/RoadmapExecutionView";
+import { Card, PageHeader, StatTile, IconGauge, IconFlag, IconCompass } from "@/components/ui";
 
-function MilestoneIcon({ status }: { status: string }) {
-  if (status === "done") return <IconCheckCircle />;
-  if (status === "in_progress") return <IconClock />;
-  return <IconCircle />;
+type PerDomainScore = {
+  domain_id: string;
+  domain_name: string;
+  build_completion: number;
+  operating_health: number;
+  average: number;
+  severity: string;
+};
+
+function scoreTone(score: number): "success" | "warning" | "error" | "neutral" {
+  if (score >= 80) return "success";
+  if (score >= 60) return "neutral";
+  if (score >= 40) return "warning";
+  return "error";
+}
+
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function addMonths(d: string | null, months: number) {
+  if (!d) return null;
+  const date = new Date(d);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString();
 }
 
 export default async function RoadmapPlanPage() {
@@ -39,224 +53,256 @@ export default async function RoadmapPlanPage() {
 
   const supabase = await createClient();
 
-  const { data: roadmap } = await supabase
-    .from("roadmap_instances")
-    .select("id, primary_outcome, status")
+  const { data: domains } = await supabase
+    .from("business_command_domains")
+    .select("id, name, description, display_order")
+    .eq("active", true)
+    .order("display_order");
+
+  const { data: instance } = await supabase
+    .from("audit_instances")
+    .select("id, status, created_at, updated_at, period_end")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!roadmap) {
+  // ---------------------------------------------------------------- State A
+  if (!instance) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-semibold text-deep-indigo">Roadmap</h1>
-        <p className="mt-2 text-sm text-soft-taupe">
-          No roadmap yet. Complete the{" "}
-          <Link href="/roadmap/audit" className="underline">
-            Business Command Audit
-          </Link>{" "}
-          to generate a prioritized one.
+      <div className="max-w-4xl p-8">
+        <PageHeader
+          title="Your Business Command Audit"
+          description="A structured review of the twelve areas that determine whether your business runs on you or on systems. It takes about 25–35 minutes, autosaves as you go, and you can attach evidence for any answer. Your responses feed the AI that builds your prioritized Roadmap — the AI interprets and explains, it never invents your scores."
+        />
+
+        <Card className="mt-6">
+          <h2 className="text-lg font-semibold text-deep-indigo">What you'll get</h2>
+          <ul className="mt-2 space-y-1 text-sm text-soft-taupe">
+            <li>• An overall build-completion and operating-health score across all twelve areas.</li>
+            <li>• Your top gaps, contradictions, and strengths, explained in plain language.</li>
+            <li>• A prioritized Roadmap that sequences the work from your lowest-scoring areas first.</li>
+          </ul>
+          <form action={startAudit} className="mt-5">
+            <button
+              type="submit"
+              className="lc-btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+            >
+              Start My Business Command Audit
+            </button>
+          </form>
+        </Card>
+
+        {/* Muted, non-interactive 12-phase preview */}
+        <p className="mt-8 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+          The twelve areas you'll assess
         </p>
+        <ol className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+          {(domains ?? []).map((d) => (
+            <li
+              key={d.id}
+              aria-disabled="true"
+              className="rounded-xl border border-[var(--card-border)] p-3 opacity-70"
+            >
+              <p className="text-sm font-medium text-deep-indigo">
+                {d.display_order}. {d.name}
+              </p>
+            </li>
+          ))}
+        </ol>
       </div>
     );
   }
 
-  const { data: phases } = await supabase
-    .from("roadmap_phases")
-    .select("id, name, sequence, status")
-    .eq("roadmap_instance_id", roadmap.id)
-    .order("sequence");
+  // Load the deterministic snapshot + narrative for findings states.
+  const { data: summary } = await supabase
+    .from("audit_findings_summary")
+    .select("overall_score, per_domain_scores, top_gaps, approved_at")
+    .eq("audit_instance_id", instance.id)
+    .maybeSingle();
 
-  const { data: milestones } = await supabase
-    .from("roadmap_milestones")
-    .select("id, phase_id, title, purpose, definition_of_done, status")
-    .eq("workspace_id", workspaceId)
-    .is("archived_at", null);
+  const perDomain = (summary?.per_domain_scores as PerDomainScore[] | null) ?? [];
+  const topGaps = [...perDomain].sort((a, b) => a.average - b.average).slice(0, 3);
+  const overall = summary?.overall_score ?? 0;
 
-  const milestonesByPhase = new Map<string, typeof milestones>();
-  for (const m of milestones ?? []) {
-    if (!milestonesByPhase.has(m.phase_id)) milestonesByPhase.set(m.phase_id, []);
-    milestonesByPhase.get(m.phase_id)!.push(m);
+  const roadmapExists = instance.status === "findings_approved";
+  const showState: "B" | "C" | "D" =
+    instance.status === "in_progress"
+      ? "B"
+      : instance.status === "findings_approved"
+        ? "D"
+        : "C"; // findings_pending or legacy 'completed'
+
+  // ---------------------------------------------------------------- State B
+  if (showState === "B") {
+    const { data: template } = await supabase
+      .from("audit_templates")
+      .select("id")
+      .eq("name", "Business Command Audit — Standard")
+      .single();
+
+    const { data: questions } = await supabase
+      .from("audit_questions")
+      .select("id, domain_id")
+      .eq("audit_template_id", template!.id);
+
+    const { data: responses } = await supabase
+      .from("audit_responses")
+      .select("question_id")
+      .eq("audit_instance_id", instance.id);
+
+    const answered = new Set((responses ?? []).map((r) => r.question_id));
+    const total = questions?.length ?? 0;
+    const answeredCount = (questions ?? []).filter((q) => answered.has(q.id)).length;
+    const pct = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
+
+    const byDomain = new Map<string, { total: number; done: number }>();
+    for (const q of questions ?? []) {
+      const e = byDomain.get(q.domain_id) ?? { total: 0, done: 0 };
+      e.total += 1;
+      if (answered.has(q.id)) e.done += 1;
+      byDomain.set(q.domain_id, e);
+    }
+    const areasComplete = [...byDomain.values()].filter((e) => e.total > 0 && e.done === e.total).length;
+
+    return (
+      <div className="max-w-4xl p-8">
+        <PageHeader title="Your Business Command Audit" description="You have an audit in progress." />
+        <Card className="mt-6">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-deep-indigo">{pct}% complete</span>
+            <span className="text-[var(--text-muted)]">Last saved {fmtDate(instance.updated_at)}</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--card-bg-hover)]">
+            <div className="h-full rounded-full bg-warm-gold transition-[width]" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="mt-3 text-sm text-soft-taupe">
+            {areasComplete} of {domains?.length ?? 12} areas complete.
+          </p>
+          <Link
+            href="/roadmap/audit"
+            className="lc-btn-primary mt-5 inline-block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+          >
+            Resume
+          </Link>
+        </Card>
+      </div>
+    );
   }
 
-  const pathwayItems: PathwayItem[] =
-    phases?.map((phase) => ({
-      id: phase.id,
-      label: phase.name,
-      sequence: phase.sequence,
-      status: phase.status === "complete" ? "complete" : phase.status === "active" ? "active" : "pending",
-    })) ?? [];
+  // ---------------------------------------------------------------- State C
+  if (showState === "C") {
+    return (
+      <div className="max-w-4xl p-8">
+        <PageHeader
+          title="Your findings are ready to review"
+          description="We've scored every area from your answers and drafted your findings. Review and approve them to generate your prioritized Roadmap."
+        />
 
-  const activePhase = phases?.find((p) => p.status === "active");
-  const otherPhases = phases?.filter((p) => p.status !== "active") ?? [];
-  const nextPhase = activePhase ? phases?.find((p) => p.sequence === activePhase.sequence + 1) : undefined;
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <StatTile value={`${overall}%`} label="Overall score" tone={scoreTone(overall)} icon={<IconGauge />} />
+          <StatTile value={topGaps.length} label="Top gaps identified" tone="warning" icon={<IconFlag />} />
+          <StatTile value={domains?.length ?? 12} label="Areas assessed" tone="neutral" icon={<IconCompass />} />
+        </div>
 
-  const activeMilestones = activePhase ? (milestonesByPhase.get(activePhase.id) ?? []) : [];
-  const doneCount = activeMilestones.filter((m) => m.status === "done").length;
-  const totalCount = activeMilestones.length;
-  const percentDone = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-  const allDone = totalCount > 0 && doneCount === totalCount;
+        <Card className="mt-4">
+          <h2 className="text-lg font-semibold text-deep-indigo">Your top 3 gaps</h2>
+          <ul className="mt-2 space-y-2">
+            {topGaps.map((g) => (
+              <li key={g.domain_id} className="border-t border-[var(--card-border)] pt-2 first:border-t-0 first:pt-0">
+                <p className="text-sm font-medium text-deep-indigo">{g.domain_name}</p>
+                <p className="text-xs text-soft-taupe">
+                  Build {g.build_completion}% · Health {g.operating_health}%
+                </p>
+              </li>
+            ))}
+            {topGaps.length === 0 && <li className="text-sm text-soft-taupe">Findings are being prepared.</li>}
+          </ul>
+          <p className="mt-3 text-xs text-[var(--text-muted)]">
+            Approving your findings locks in this assessment and builds your Roadmap. You can still update your answers
+            first.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/roadmap/findings"
+              className="lc-btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+            >
+              Review My Findings
+            </Link>
+            <form action={reopenAudit.bind(null, instance.id)}>
+              <button
+                type="submit"
+                className="rounded border border-soft-taupe px-4 py-2 text-sm text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
+              >
+                Update My Answers
+              </button>
+            </form>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
+  // ---------------------------------------------------------------- State D
   return (
-    <div className="max-w-5xl p-8">
+    <div className="max-w-4xl p-8">
       <PageHeader
-        title="Your Roadmap"
-        description={
-          <>
-            {roadmap.primary_outcome}
-            {activePhase && (
-              <span className="mt-1 block text-[var(--text-muted)]">
-                Phase {activePhase.sequence} of {phases?.length ?? 0} &middot; {doneCount} of {totalCount} milestones
-                complete in this phase
-              </span>
-            )}
-          </>
+        title="Your Roadmap is ready"
+        description="Your findings are approved and your prioritized Roadmap is live below."
+        actions={
+          <form action={startAudit}>
+            <button
+              type="submit"
+              className="rounded border border-soft-taupe px-4 py-2 text-sm text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
+            >
+              Start reassessment
+            </button>
+          </form>
         }
       />
 
-      <div className="mt-6">
-        <PathwayRow items={pathwayItems} />
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div
+          className="flex h-20 w-20 flex-col items-center justify-center rounded-full text-white"
+          style={{ background: "var(--deep-indigo, #1e1b4b)" }}
+        >
+          <span className="text-2xl font-semibold">{overall}%</span>
+          <span className="text-[10px] uppercase tracking-wide opacity-80">Overall</span>
+        </div>
+        <div className="text-sm text-soft-taupe">
+          <p>Last assessed: {fmtDate(summary?.approved_at ?? instance.period_end ?? instance.updated_at)}</p>
+          <p>Next assessment: {fmtDate(addMonths(summary?.approved_at ?? instance.updated_at, 3))}</p>
+        </div>
       </div>
 
-      {activePhase ? (
-        <Card className="mt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-deep-indigo">
-              {activePhase.sequence}. {activePhase.name}
-            </h2>
-            <StatusBadge status={activePhase.status} />
-          </div>
-
-          {totalCount > 0 && (
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--card-bg-hover)]">
-              <div
-                className="h-full rounded-full bg-warm-gold transition-[width]"
-                style={{ width: `${percentDone}%` }}
-              />
-            </div>
-          )}
-
-          <ul className="mt-3">
-            {activeMilestones.map((m) => (
-              <li key={m.id} className="flex items-start gap-3 border-t border-[var(--card-border)] py-3 first:border-t-0">
-                <span
-                  className={
-                    m.status === "done"
-                      ? "mt-0.5 shrink-0 text-[var(--success)]"
-                      : m.status === "in_progress"
-                        ? "mt-0.5 shrink-0 text-warm-gold"
-                        : "mt-0.5 shrink-0 text-soft-taupe"
-                  }
-                >
-                  <MilestoneIcon status={m.status} />
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-deep-indigo">{m.title}</p>
-                  {m.purpose && <p className="text-sm text-soft-taupe">{m.purpose}</p>}
-                  <p className="text-sm text-soft-taupe">Done when: {m.definition_of_done}</p>
-                  {m.status !== "done" && (
-                    <form action={completeMilestone.bind(null, m.id)} className="mt-2 flex gap-2">
-                      <label htmlFor={`note-${m.id}`} className="sr-only">
-                        Completion evidence for {m.title}
-                      </label>
-                      <input
-                        id={`note-${m.id}`}
-                        name="note"
-                        type="text"
-                        placeholder="Evidence note (required to mark done)"
-                        className="flex-1 rounded border border-soft-taupe px-2 py-1 text-sm"
-                      />
-                      <button
-                        type="submit"
-                        className="rounded bg-sacred-teal px-3 py-1 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
-                      >
-                        Mark done
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {!allDone && totalCount > 0 && (
-            <p className="mt-3 flex items-center gap-1.5 border-t border-[var(--card-border)] pt-3 text-xs text-soft-taupe">
-              <IconLock />
-              Complete all {totalCount} milestone{totalCount === 1 ? "" : "s"} to unlock
-              {nextPhase ? ` phase ${nextPhase.sequence}: ${nextPhase.name}` : " the next phase"}.
+      <h2 className="mt-8 text-lg font-semibold text-deep-indigo">Your top 3 priority gaps</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {topGaps.map((g) => (
+          <Card key={g.domain_id}>
+            <p className="text-sm font-medium text-deep-indigo">{g.domain_name}</p>
+            <p className="mt-1 text-xs text-soft-taupe">
+              Build {g.build_completion}% · Health {g.operating_health}%
             </p>
-          )}
-          {allDone && (
-            <form action={completePhase.bind(null, activePhase.id)} className="mt-3">
-              <button
-                type="submit"
-                className="lc-btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
-              >
-                Close phase and start the next one
-              </button>
-            </form>
-          )}
-        </Card>
-      ) : (
-        (phases?.length ?? 0) > 0 && (
-          <Card className="mt-6">
-            <p className="text-sm text-deep-indigo">Every phase in this roadmap is complete.</p>
           </Card>
-        )
-      )}
+        ))}
+      </div>
 
-      {otherPhases.length > 0 && (
-        <ol className="mt-6 space-y-2">
-          {otherPhases.map((phase) => {
-            const phaseMilestones = milestonesByPhase.get(phase.id) ?? [];
-            const doneOfPhase = phaseMilestones.filter((m) => m.status === "done").length;
-            return (
-              <li key={phase.id}>
-                <details className="lc-card overflow-hidden rounded-2xl p-0">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm [&::-webkit-details-marker]:hidden">
-                    <span className="font-medium text-deep-indigo">
-                      {phase.sequence}. {phase.name}
-                    </span>
-                    <span className="flex items-center gap-3 text-[var(--text-muted)]">
-                      {phaseMilestones.length > 0 && (
-                        <span>
-                          {doneOfPhase} of {phaseMilestones.length} milestones complete
-                        </span>
-                      )}
-                      <StatusBadge status={phase.status} />
-                    </span>
-                  </summary>
-                  <ul className="border-t border-[var(--card-border)] px-4">
-                    {phaseMilestones.map((m) => (
-                      <li key={m.id} className="flex items-start gap-3 border-t border-[var(--card-border)] py-3 first:border-t-0">
-                        <span
-                          className={
-                            m.status === "done"
-                              ? "mt-0.5 shrink-0 text-[var(--success)]"
-                              : m.status === "in_progress"
-                                ? "mt-0.5 shrink-0 text-warm-gold"
-                                : "mt-0.5 shrink-0 text-soft-taupe"
-                          }
-                        >
-                          <MilestoneIcon status={m.status} />
-                        </span>
-                        <div>
-                          <p className="text-sm font-medium text-deep-indigo">{m.title}</p>
-                          <p className="text-sm text-soft-taupe">Done when: {m.definition_of_done}</p>
-                        </div>
-                      </li>
-                    ))}
-                    {phaseMilestones.length === 0 && (
-                      <li className="py-3 text-sm text-soft-taupe">No milestones defined yet.</li>
-                    )}
-                  </ul>
-                </details>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/roadmap/plan#phases"
+          className="lc-btn-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sacred-teal"
+        >
+          View My Roadmap
+        </Link>
+        <Link
+          href="/roadmap/findings"
+          className="rounded border border-soft-taupe px-4 py-2 text-sm text-deep-indigo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo"
+        >
+          View Full Report
+        </Link>
+      </div>
+
+      {roadmapExists && <RoadmapExecutionView workspaceId={workspaceId} />}
     </div>
   );
 }

@@ -1,62 +1,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readDomainScores } from "@/lib/audit/scoring";
 
-type DomainScore = {
-  domain_id: string;
-  domain_name: string;
-  build_completion_score: number | null;
-  operating_health_score: number | null;
-};
-
-function severityFor(avg: number): "strength" | "stable" | "needs_attention" | "at_risk" {
-  if (avg < 40) return "at_risk";
-  if (avg < 60) return "needs_attention";
-  if (avg < 80) return "stable";
-  return "strength";
-}
-
-// Generates a prioritized roadmap from a completed Business Command Audit:
-// one finding per domain (Build Completion and Operating Health scored
-// independently, per Section 9.6), then one roadmap phase per domain
-// sequenced lowest-score-first (the domains most in need of work come first),
-// each phase carrying one milestone gated on approved completion evidence —
-// reusing the same gate mechanism verified in
+// Generates a prioritized roadmap from an APPROVED Business Command Audit:
+// one roadmap phase per domain sequenced lowest-score-first (the domains most
+// in need of work come first), each phase carrying one milestone gated on
+// approved completion evidence — reusing the same gate mechanism verified in
 // supabase/tests/roadmap_gate_enforcement.sql.
+//
+// Per-domain findings and the deterministic score snapshot are written earlier,
+// at audit completion (see lib/audit/flow.ts). Roadmap generation only runs
+// after a human approves the findings (status -> findings_approved), so this is
+// intentionally the approval-time half of the split.
 export async function generateRoadmapFromAudit(
   supabase: SupabaseClient,
   workspaceId: string,
   auditInstanceId: string,
   userId: string,
 ) {
-  const { data: scores } = await supabase
-    .from("audit_domain_scores")
-    .select("domain_id, build_completion_score, operating_health_score, business_command_domains(name)")
-    .eq("audit_instance_id", auditInstanceId);
-
-  const domainScores: DomainScore[] = (scores ?? []).map((row: any) => ({
-    domain_id: row.domain_id,
-    domain_name: row.business_command_domains?.name ?? "Unknown domain",
-    build_completion_score: row.build_completion_score,
-    operating_health_score: row.operating_health_score,
-  }));
-
-  const withAverage = domainScores.map((d) => {
-    const build = d.build_completion_score ?? 0;
-    const health = d.operating_health_score ?? 0;
-    return { ...d, average: (build + health) / 2 };
-  });
-
-  // Findings: one per domain, both scores stated independently.
-  const findingsToInsert = withAverage.map((d) => ({
-    workspace_id: workspaceId,
-    audit_instance_id: auditInstanceId,
-    domain_id: d.domain_id,
-    severity: severityFor(d.average),
-    finding: `${d.domain_name}: Build Completion ${Math.round(d.build_completion_score ?? 0)}%, Operating Health ${Math.round(d.operating_health_score ?? 0)}%.`,
-  }));
-
-  if (findingsToInsert.length > 0) {
-    await supabase.from("audit_findings").insert(findingsToInsert);
-  }
+  const withAverage = await readDomainScores(supabase, auditInstanceId);
 
   // Prioritize lowest-scoring domains first.
   const prioritized = [...withAverage].sort((a, b) => a.average - b.average);
