@@ -187,6 +187,7 @@ body {
 }
 
 .lc-nav-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -210,6 +211,39 @@ body {
   color: var(--warm-gold);
   border-left-color: var(--warm-gold);
   font-weight: 600;
+}
+
+/* Shown only when the sidebar is collapsed (rendered conditionally by
+   PrimaryNav, not just CSS-hidden) — the page name a client needs to
+   read before clicking an icon-only rail item. Native `title` tooltips
+   are too slow and unstyled for this, so this is a real element instead. */
+.lc-nav-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  z-index: 60;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--deep-indigo);
+  color: var(--ivory-light);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-4px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.lc-nav-link:hover .lc-nav-tooltip,
+.lc-nav-link:focus-visible .lc-nav-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
 }
 
 /* Compact horizontal toggle (Build/Run, Light/Dark) — same gold-tint

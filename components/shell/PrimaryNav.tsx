@@ -81,11 +81,15 @@ export function PrimaryNav() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                title={collapsed ? item.label : undefined}
                 className={`lc-nav-link text-sm ${isActive ? "active" : ""} ${collapsed ? "justify-center !px-2" : ""}`}
               >
                 {Icon && <span className="shrink-0"><Icon /></span>}
                 <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
+                {collapsed && (
+                  <span className="lc-nav-tooltip" aria-hidden="true">
+                    {item.label}
+                  </span>
+                )}
               </Link>
             </li>
           );
