@@ -34,7 +34,7 @@ export function RoadmapJourney({
         <div className="h-full rounded-full bg-warm-gold transition-[width]" style={{ width: `${fill}%` }} />
       </div>
 
-      <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ol className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
         {STEPS.map((s) => {
           const done = s.n < stage;
           const active = s.n === stage;
