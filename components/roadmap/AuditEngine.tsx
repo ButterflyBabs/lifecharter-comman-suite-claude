@@ -126,7 +126,7 @@ export function AuditEngine({
   const update = useCallback(
     (questionId: string, patch: Partial<Answer>) => {
       setAnswers((prev) => {
-        const next = { ...prev[questionId], ...patch };
+        const next: Answer = { ...(prev[questionId] ?? initialAnswerEmpty()), ...patch };
         const updated = { ...prev, [questionId]: next };
         scheduleSave(questionId, next);
         return updated;
