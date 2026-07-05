@@ -57,7 +57,7 @@ export function PrimaryNav() {
   return (
     <nav
       aria-label="Primary"
-      className={`shrink-0 border-r border-[var(--card-border)] bg-[var(--card-bg)] p-4 transition-[width] duration-150 ${collapsed ? "w-[68px]" : "w-64"}`}
+      className={`shrink-0 border-r border-[var(--card-border)] bg-[var(--card-bg)] transition-[width] duration-150 ${collapsed ? "w-[72px] p-2" : "w-64 p-4"}`}
     >
       <button
         type="button"
@@ -82,9 +82,9 @@ export function PrimaryNav() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
-                className={`lc-nav-link text-sm ${isActive ? "active" : ""} ${collapsed ? "justify-center px-2" : ""}`}
+                className={`lc-nav-link text-sm ${isActive ? "active" : ""} ${collapsed ? "justify-center !px-2" : ""}`}
               >
-                {Icon && <Icon />}
+                {Icon && <span className="shrink-0"><Icon /></span>}
                 <span className={collapsed ? "sr-only" : ""}>{item.label}</span>
               </Link>
             </li>
