@@ -11,7 +11,7 @@ export async function ModeToggle() {
     <div
       role="group"
       aria-label="Build or Run mode"
-      className="flex overflow-hidden rounded-lg border border-[var(--card-border)] text-sm"
+      className="flex shrink-0 overflow-hidden rounded-lg border border-[var(--card-border)] text-sm"
     >
       <form action={setMode.bind(null, "build")}>
         <button type="submit" aria-pressed={mode === "build"} className={`lc-toggle-pill ${mode === "build" ? "active" : ""}`}>

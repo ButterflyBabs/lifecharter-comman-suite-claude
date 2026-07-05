@@ -11,7 +11,7 @@ export async function ThemeToggle() {
     <div
       role="group"
       aria-label="Light or dark theme"
-      className="flex overflow-hidden rounded-lg border border-[var(--card-border)] text-sm"
+      className="flex shrink-0 overflow-hidden rounded-lg border border-[var(--card-border)] text-sm"
     >
       <form action={setTheme.bind(null, "light")}>
         <button type="submit" aria-pressed={theme === "light"} className={`lc-toggle-pill ${theme === "light" ? "active" : ""}`}>
