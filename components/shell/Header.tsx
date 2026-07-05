@@ -37,32 +37,36 @@ export async function Header() {
         <Image src={logoSrc} alt="LifeCharter Command Suite" width={132} height={35} priority />
       </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          {currentWorkspace ? (
-            <span aria-label="Current workspace" className="text-sm text-[var(--text-muted)]">
-              {currentWorkspace.name}
-            </span>
-          ) : (
-            <span className="text-sm text-[var(--text-muted)]">No workspace yet</span>
-          )}
+      {/* A 2-row grid (rather than two independent flex rows) so specific
+          columns line up exactly: workspace name sits above Notifications,
+          and the Build/Run toggle sits above the Light/Dark toggle,
+          regardless of how wide the free-flowing search/nav-links column
+          ends up being. */}
+      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-4 gap-y-2">
+        <form action="/search" className="col-start-1 row-start-1 min-w-[160px] max-w-md">
+          <label htmlFor="global-search" className="sr-only">
+            Search
+          </label>
+          <input
+            id="global-search"
+            name="q"
+            type="search"
+            placeholder="Search..."
+            className="w-full rounded border border-[var(--card-border)] bg-transparent px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+          />
+        </form>
+        {currentWorkspace ? (
+          <span aria-label="Current workspace" className="col-start-2 row-start-1 text-sm text-[var(--text-muted)]">
+            {currentWorkspace.name}
+          </span>
+        ) : (
+          <span className="col-start-2 row-start-1 text-sm text-[var(--text-muted)]">No workspace yet</span>
+        )}
+        <div className="col-start-3 row-start-1">
           <ModeToggle />
-
-          <form action="/search" className="min-w-[160px] flex-1 max-w-md">
-            <label htmlFor="global-search" className="sr-only">
-              Search
-            </label>
-            <input
-              id="global-search"
-              name="q"
-              type="search"
-              placeholder="Search..."
-              className="w-full rounded border border-[var(--card-border)] bg-transparent px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
-            />
-          </form>
         </div>
 
-        <nav aria-label="Quick access" className="flex flex-wrap items-center justify-end gap-3 text-sm">
+        <div className="col-start-1 row-start-2 flex flex-wrap items-center gap-3 text-sm">
           <CommandPalette />
           <Link href="/work" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
             Work
@@ -70,18 +74,20 @@ export async function Header() {
           <Link href="/approvals" className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal">
             Approvals
           </Link>
-          <Link
-            href="/notifications"
-            className="text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
-          >
-            Notifications{unreadCount ? ` (${unreadCount})` : ""}
-          </Link>
           {/* Section 5 requires a persistent Help control, but Appendix A defines
               no /help route — omitted rather than inventing one; see
               docs/navigation-and-routes.md. */}
+        </div>
+        <Link
+          href="/notifications"
+          className="col-start-2 row-start-2 text-sm text-deep-indigo hover:text-warm-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sacred-teal"
+        >
+          Notifications{unreadCount ? ` (${unreadCount})` : ""}
+        </Link>
+        <div className="col-start-3 row-start-2">
           <ThemeToggle />
-          {user && <ProfileMenu email={user.email ?? "Account"} />}
-        </nav>
+        </div>
+        <div className="col-start-4 row-start-2">{user && <ProfileMenu email={user.email ?? "Account"} />}</div>
       </div>
     </header>
   );
