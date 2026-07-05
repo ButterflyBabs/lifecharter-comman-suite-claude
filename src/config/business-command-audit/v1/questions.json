@@ -2,7 +2,7 @@
   "templateKey": "business-command-audit",
   "name": "LifeCharter Business Command Audit",
   "version": "1.0.0",
-  "status": "proposed",
+  "status": "approved",
   "description": "Canonical 48-question baseline audit for the LifeCharter Command Suite. The audit evaluates 12 fixed business phases using four core questions per phase. Questions 01 and 02 primarily measure Build Completion. Questions 03 and 04 primarily measure Operating Health. Deeper AI-guided Phase Assessments are separate and generate personalized Milestones for each client.",
   "questionCount": 48,
   "phaseCount": 12,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { saveResponse, completeAuditAction, runAdaptive, saveAdaptiveAnswer } from "@/app/(app)/roadmap/audit/actions";
 import type { AdaptiveQuestion } from "@/lib/audit/types";
+import { SCALE_0_4_OPTIONS, UNSCORED_OPTIONS, normalizeScale0to4 } from "@/lib/audit/scale";
 
 type Confidence = "low" | "medium" | "high";
 
@@ -32,6 +33,7 @@ export type EngineDomain = {
 type Answer = {
   score: number | null;
   value: any;
+  selectedOption: string | null;
   confidence: Confidence | null;
   notes: string | null;
   evidenceRefs: EvidenceRef[];
@@ -53,6 +55,7 @@ function initialAnswer(q: EngineQuestion): Answer {
   return {
     score: q.existing?.score ?? null,
     value: rj?.value ?? null,
+    selectedOption: rj?.selectedOption ?? null,
     confidence: (rj?.confidence as Confidence) ?? null,
     notes: q.existing?.notes ?? null,
     evidenceRefs: (q.existing?.evidenceRefs as EvidenceRef[]) ?? [],
@@ -61,6 +64,7 @@ function initialAnswer(q: EngineQuestion): Answer {
 
 function isAnswered(a: Answer | undefined): boolean {
   if (!a) return false;
+  if (a.selectedOption != null && a.selectedOption !== "") return true;
   return a.score !== null || (a.value !== null && a.value !== "" && a.value !== undefined);
 }
 
@@ -104,7 +108,7 @@ export function AuditEngine({
         instanceId,
         questionId,
         score: a.score,
-        responseJson: { value: a.value, confidence: a.confidence },
+        responseJson: { value: a.value, confidence: a.confidence, selectedOption: a.selectedOption },
         notes: a.notes,
         evidenceRefs: a.evidenceRefs,
       });
@@ -385,7 +389,7 @@ export function AuditEngine({
 }
 
 function initialAnswerEmpty(): Answer {
-  return { score: null, value: null, confidence: null, notes: null, evidenceRefs: [] };
+  return { score: null, value: null, selectedOption: null, confidence: null, notes: null, evidenceRefs: [] };
 }
 
 function QuestionField({
@@ -485,6 +489,51 @@ function ResponseControl({
   onChange: (patch: Partial<Answer>) => void;
 }) {
   const type = question.responseType;
+
+  if (type === "scale_0_4") {
+    const selected = answer.selectedOption;
+    return (
+      <div className="space-y-1.5">
+        {SCALE_0_4_OPTIONS.map((opt) => (
+          <label key={opt.value} className="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name={`q-${question.id}`}
+              checked={selected === String(opt.value)}
+              onChange={() =>
+                onChange({ selectedOption: String(opt.value), value: opt.value, score: normalizeScale0to4(opt.value) })
+              }
+              className="mt-0.5"
+            />
+            <span className="text-deep-indigo">
+              <span className="font-medium">{opt.value}</span> — {opt.label}
+            </span>
+          </label>
+        ))}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {UNSCORED_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange({ selectedOption: opt.key, value: null, score: null })}
+              className={
+                "rounded-full px-3 py-0.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-indigo " +
+                (selected === opt.key ? "bg-deep-indigo text-white" : "border border-soft-taupe text-soft-taupe")
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {selected === "not_applicable" && (
+          <p className="pt-1 text-xs text-warm-gold">Add a short rationale in Notes below for Not Applicable.</p>
+        )}
+        {selected === "not_sure" && (
+          <p className="pt-1 text-xs text-[var(--text-muted)]">We will ask a follow-up to clarify this one.</p>
+        )}
+      </div>
+    );
+  }
 
   if (isScale(type)) {
     const max = scaleMax(type);

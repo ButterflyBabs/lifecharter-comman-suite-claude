@@ -42,38 +42,38 @@ invented, paraphrased, or summarized by an assistant.
    checksum, the canonical 12-domain set/order, and (once `APPROVED`) the
    >=4/domain, >=48-total, non-empty-text rule.
 
-## Seeding (only after approval)
+## Seeding
 
-The seed **generator** is ready: `scripts/seed-business-command-audit.mjs`
-(run via `npm run seed:bca`). It refuses to emit anything unless this bank is
-`APPROVED`, checksum-matched, has the canonical 12 domains, and has ≥4/domain
-(≥48 total) with non-empty text and valid response/score types — so it can never
-seed empty or unapproved content, and it only transcribes approved text (never
-invents).
+**Status: SEEDED** (v1, migration `20260721110000_seed_business_command_audit_v1.sql`).
 
-Once approved:
+The generator is `scripts/seed_business_command_audit.py` (`npm run seed:bca`).
+It refuses to emit anything unless this bank is `approved`, checksum-matched, and
+structurally valid (12 phases, 48 questions, the Build Completion / Operating
+Health measure pattern) — so it can never seed empty/unapproved/drifted content,
+and it only transcribes approved text verbatim (never invents).
 
 ```sh
-npm run seed:bca -- --dry-run   # preview the SQL
-npm run seed:bca                # write supabase/migrations/<ts>_seed_business_command_audit_v1.sql
+npm run seed:bca   # validates, writes the migration, and prints the SQL
 ```
 
-Then review the generated migration and apply it via the normal Supabase
-workflow (CLI `supabase db push` or MCP `apply_migration`).
+Then review the generated migration and apply it (Supabase CLI `db push` or MCP
+`apply_migration`).
 
-The generated migration uses a **non-destructive supersede**: current
-Standard-template questions are reparented to a retired template (so historical
-`audit_responses` still resolve), the Standard template's version is bumped, and
-the approved bank is inserted under the Standard template — so the app keeps
+The migration uses a **non-destructive supersede**: the previous
+Standard-template questions were reparented to a retired template (historical
+`audit_responses` still resolve), the Standard template's version was bumped, and
+the 48 approved questions inserted under the Standard template — so the app keeps
 resolving the active bank by name with no code change. No question is ever
 hard-deleted.
 
-Notes / current schema limits the generator enforces:
-- `audit_questions.score_category` is **NOT NULL** → every question needs
-  `build_completion` or `operating_health`.
-- There is **no options column** yet → `multiple_choice` is rejected until a
-  schema migration adds one.
-- `weight` = the question's `weight`, else its category weight, else `1`.
+Integration notes:
+- Response type `scale_0_4` renders the 5 labeled options + Not Sure / Not
+  Applicable (`lib/audit/scale.ts`); the raw 0–4 + `selectedOption` are stored in
+  `response_json`, and a **normalized 0–100** goes in `audit_responses.score` so
+  the existing scores view / roadmap / findings pipeline is unchanged.
+- Risk is carried on `audit_questions.risk_eligible` + `secondary_measure`.
+- Phase order follows the canonical bank (`business_command_domains.display_order`
+  was aligned to it).
 
 ## Guardrail
 

@@ -9,7 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "seed:bca": "node scripts/seed-business-command-audit.mjs"
+    "seed:bca": "python3 scripts/seed_business_command_audit.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
