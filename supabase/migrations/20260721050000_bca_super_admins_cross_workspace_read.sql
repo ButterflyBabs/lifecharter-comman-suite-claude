@@ -17,11 +17,11 @@ grant all on table public.super_admins to authenticated, service_role;
 
 alter table public.super_admins enable row level security;
 
--- Only super admins can see the roster; writes are service-role only (no write
--- policy → denied for authenticated).
-create policy "super admins can read the roster" on public.super_admins
-  for select using (private.is_super_admin());
-
+-- Defined before the policy below that calls it — a policy referencing a
+-- not-yet-created function fails when migrations are replayed from scratch
+-- (it only "worked" against the live project because the function already
+-- existed there from an earlier ad-hoc run; CI, which always starts from a
+-- clean database, caught the real statement order).
 create or replace function private.is_super_admin()
 returns boolean
 language sql
@@ -36,6 +36,11 @@ $$;
 
 revoke all on function private.is_super_admin() from public, anon;
 grant execute on function private.is_super_admin() to authenticated, service_role;
+
+-- Only super admins can see the roster; writes are service-role only (no write
+-- policy → denied for authenticated).
+create policy "super admins can read the roster" on public.super_admins
+  for select using (private.is_super_admin());
 
 -- Cross-workspace read, SELECT only. audit_domain_scores is a security_invoker
 -- view over audit_responses + audit_instances, so granting super-admin SELECT on
