@@ -29,7 +29,13 @@ jobs:
           version: latest
 
       - name: Start local Supabase stack
-        run: supabase start --ignore-health-check
+        # --ignore-health-check skips waiting for every service (including
+        # Storage, which creates storage.buckets on its own startup) to
+        # report ready before `start` seeds the database from
+        # supabase/migrations/ — a race that broke the audit-evidence
+        # storage migration ("relation storage.buckets does not exist")
+        # the first time these 13 commits were ever run through this CI.
+        run: supabase start
 
       - name: Apply every migration from scratch
         run: supabase db reset
