@@ -1,6 +1,10 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { getDashboardLayout } from "@/lib/dashboard/get-layout";
+import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import type { WidgetDefinition } from "@/lib/dashboard/types";
 import {
   Card,
   PageHeader,
@@ -15,6 +19,11 @@ import {
   IconHelpCircle,
 } from "@/components/ui";
 import { addClient } from "./actions";
+
+const WIDGETS: WidgetDefinition[] = [
+  { key: "client_base", title: "Client Base" },
+  { key: "attention_needed", title: "Attention Needed" },
+];
 
 export default async function ClientsOverviewPage({
   searchParams,
@@ -41,6 +50,7 @@ export default async function ClientsOverviewPage({
     { data: latestHealth },
     { data: organizations },
     { data: businessUnits },
+    savedLayout,
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -51,6 +61,7 @@ export default async function ClientsOverviewPage({
     supabase.from("client_health_events").select("client_id, status, calculated_at").eq("workspace_id", workspaceId).order("calculated_at", { ascending: false }),
     supabase.from("organizations").select("id, name").eq("workspace_id", workspaceId),
     supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
+    getDashboardLayout("clients_overview"),
   ]);
 
   const clients = businessUnitFilter
@@ -73,6 +84,39 @@ export default async function ClientsOverviewPage({
     return org ?? person?.preferred_name ?? [person?.first_name, person?.last_name].filter(Boolean).join(" ") ?? "Untitled client";
   };
 
+  const widgetContent: Record<string, ReactNode> = {
+    client_base: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconUsers /></IconBadge>
+          Client Base
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatTile value={total} label="Total clients" icon={<IconUsers />} />
+          <StatTile value={active} label="Active" icon={<IconCheckCircle />} />
+          <StatTile value={onboarding} label="Onboarding" icon={<IconClipboard />} />
+        </div>
+      </section>
+    ),
+    attention_needed: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconFlag /></IconBadge>
+          Attention Needed
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile value={atRisk} label="At-risk (latest health check)" tone={atRisk > 0 ? "error" : "neutral"} icon={<IconFlag />} />
+          <StatTile
+            value={openSupportRequests ?? 0}
+            label="Open support requests"
+            tone={(openSupportRequests ?? 0) > 0 ? "warning" : "neutral"}
+            icon={<IconHelpCircle />}
+          />
+        </div>
+      </section>
+    ),
+  };
+
   return (
     <div className="p-8">
       <PageHeader
@@ -80,18 +124,9 @@ export default async function ClientsOverviewPage({
         description="Who is active, who needs attention, and what is next for every client relationship."
       />
 
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <StatTile value={total} label="Total clients" icon={<IconUsers />} />
-        <StatTile value={active} label="Active" icon={<IconCheckCircle />} />
-        <StatTile value={onboarding} label="Onboarding" icon={<IconClipboard />} />
-        <StatTile value={atRisk} label="At-risk (latest health check)" tone={atRisk > 0 ? "error" : "neutral"} icon={<IconFlag />} />
-        <StatTile
-          value={openSupportRequests ?? 0}
-          label="Open support requests"
-          tone={(openSupportRequests ?? 0) > 0 ? "warning" : "neutral"}
-          icon={<IconHelpCircle />}
-        />
-      </section>
+      <div className="mt-6">
+        <DashboardGrid pageKey="clients_overview" widgets={WIDGETS} widgetContent={widgetContent} savedLayout={savedLayout} />
+      </div>
 
       <section className="mt-8">
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">

@@ -1,6 +1,10 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentWorkspaceId } from "@/lib/data/current-workspace";
+import { getDashboardLayout } from "@/lib/dashboard/get-layout";
+import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import type { WidgetDefinition } from "@/lib/dashboard/types";
 import {
   Card,
   PageHeader,
@@ -14,6 +18,13 @@ import {
   IconClipboard,
   IconCalendar,
 } from "@/components/ui";
+
+const WIDGETS: WidgetDefinition[] = [
+  { key: "demand", title: "Demand" },
+  { key: "pipeline", title: "Pipeline" },
+  { key: "cash_and_forecast", title: "Cash and Forecast" },
+  { key: "action_queues", title: "Action Queues" },
+];
 
 export default async function RevenueOverviewPage({
   searchParams,
@@ -55,6 +66,7 @@ export default async function RevenueOverviewPage({
     { data: unpaidInvoices },
     { data: latestForecast },
     { data: businessUnits },
+    savedLayout,
   ] = await Promise.all([
     newLeadsQuery,
     qualifiedLeadsQuery,
@@ -64,11 +76,78 @@ export default async function RevenueOverviewPage({
     unpaidInvoicesQuery,
     supabase.from("revenue_forecasts").select("id, period, scenario").eq("workspace_id", workspaceId).order("generated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("business_units").select("id, name").eq("workspace_id", workspaceId).eq("status", "active").order("name"),
+    getDashboardLayout("revenue_overview"),
   ]);
 
   const pipelineValue = (openOpportunities ?? []).reduce((sum, o) => sum + Number(o.expected_value ?? 0), 0);
   const weightedValue = (openOpportunities ?? []).reduce((sum, o) => sum + Number(o.weighted_value ?? 0), 0);
   const receivables = (unpaidInvoices ?? []).reduce((sum, i) => sum + Number(i.amount_due ?? 0), 0);
+
+  const widgetContent: Record<string, ReactNode> = {
+    demand: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconTrendingUp /></IconBadge>
+          Demand
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile value={newLeadsCount ?? 0} label="New leads" icon={<IconTrendingUp />} />
+          <StatTile value={qualifiedLeadsCount ?? 0} label="Qualified leads" icon={<IconCheckCircle />} />
+        </div>
+      </section>
+    ),
+    pipeline: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconDollarSign /></IconBadge>
+          Pipeline
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatTile value={(openOpportunities ?? []).length} label="Open opportunities" icon={<IconTrendingUp />} />
+          <StatTile value={`$${pipelineValue.toLocaleString()}`} label="Pipeline value" icon={<IconDollarSign />} />
+          <StatTile value={`$${weightedValue.toLocaleString()}`} label="Weighted pipeline" icon={<IconDollarSign />} />
+        </div>
+      </section>
+    ),
+    cash_and_forecast: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconReceipt /></IconBadge>
+          Cash and Forecast
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" icon={<IconReceipt />} />
+          <StatTile
+            value={latestForecast?.period ?? "—"}
+            label={latestForecast ? `Latest forecast (${latestForecast.scenario.replace("_", " ")})` : "No forecast yet"}
+            icon={<IconCalendar />}
+          />
+        </div>
+      </section>
+    ),
+    action_queues: (
+      <section>
+        <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
+          <IconBadge size="sm"><IconClipboard /></IconBadge>
+          Action Queues
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile
+            value={proposalsNeedingAction ?? 0}
+            label="Proposals needing action"
+            tone={(proposalsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
+            icon={<IconClipboard />}
+          />
+          <StatTile
+            value={contractsNeedingAction ?? 0}
+            label="Contracts needing action"
+            tone={(contractsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
+            icon={<IconClipboard />}
+          />
+        </div>
+      </section>
+    ),
+  };
 
   return (
     <div className="p-8">
@@ -95,31 +174,9 @@ export default async function RevenueOverviewPage({
         </form>
       )}
 
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile value={newLeadsCount ?? 0} label="New leads" icon={<IconTrendingUp />} />
-        <StatTile value={qualifiedLeadsCount ?? 0} label="Qualified leads" icon={<IconCheckCircle />} />
-        <StatTile value={(openOpportunities ?? []).length} label="Open opportunities" icon={<IconTrendingUp />} />
-        <StatTile value={`$${pipelineValue.toLocaleString()}`} label="Pipeline value" icon={<IconDollarSign />} />
-        <StatTile value={`$${weightedValue.toLocaleString()}`} label="Weighted pipeline" icon={<IconDollarSign />} />
-        <StatTile value={`$${receivables.toLocaleString()}`} label="Outstanding receivables" icon={<IconReceipt />} />
-        <StatTile
-          value={proposalsNeedingAction ?? 0}
-          label="Proposals needing action"
-          tone={(proposalsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
-          icon={<IconClipboard />}
-        />
-        <StatTile
-          value={contractsNeedingAction ?? 0}
-          label="Contracts needing action"
-          tone={(contractsNeedingAction ?? 0) > 0 ? "warning" : "neutral"}
-          icon={<IconClipboard />}
-        />
-        <StatTile
-          value={latestForecast?.period ?? "—"}
-          label={latestForecast ? `Latest forecast (${latestForecast.scenario.replace("_", " ")})` : "No forecast yet"}
-          icon={<IconCalendar />}
-        />
-      </section>
+      <div className="mt-6">
+        <DashboardGrid pageKey="revenue_overview" widgets={WIDGETS} widgetContent={widgetContent} savedLayout={savedLayout} />
+      </div>
 
       <section className="mt-8">
         <h2 className="lc-section-heading text-lg font-semibold text-deep-indigo">
