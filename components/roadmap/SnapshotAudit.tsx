@@ -76,7 +76,11 @@ export function SnapshotAudit({ phases }: { phases: SnapshotPhase[] }) {
     const { error: rpcError } = await supabase.rpc("submit_public_audit_snapshot", { payload });
     setSubmitting(false);
     if (rpcError) {
-      setError("Something went wrong saving your results. Please try again.");
+      setError(
+        rpcError.message.startsWith("Too many submissions")
+          ? rpcError.message
+          : "Something went wrong saving your results. Please try again.",
+      );
       return;
     }
     setResult(computed);
