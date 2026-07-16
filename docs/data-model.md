@@ -1842,3 +1842,41 @@ record. See Assumptions below.
   ([notification_generators.sql](../supabase/tests/notification_generators.sql)).
   Every other table in this schema is still governed purely by
   workspace membership and named-role checks, unchanged by this build.
+
+## Assumptions Recorded in the Customizable Dashboard Widgets build
+
+- **A single table, `dashboard_layouts`, is scoped by `user_id` directly**
+  (`workspace_id in ...` is not part of its RLS predicate) rather than by
+  workspace membership like every other table in this schema — a display/
+  layout preference travels with the person, not with their membership in
+  one specific workspace, matching the existing `notification_preferences`
+  table's exact pattern (`using (user_id = auth.uid())`).
+- **`page_key` is a free-text discriminator, not a foreign key or enum** —
+  `dashboard_layouts` holds one row per `(user_id, page_key)` pair
+  (unique constraint), and each customizable page just picks its own
+  string (`command_center`, `revenue_overview`, `operations_overview`,
+  `ai_overview`, `clients_overview`). Nothing in the schema enforces that
+  a `page_key` corresponds to a real page — an orphaned row from a since-
+  removed page would simply never be read again, not cleaned up.
+- **`DashboardGrid` is reused as-is across all five pages** — the
+  component, its native-HTML5-drag-and-drop implementation, and the
+  `saveDashboardLayout` action are unchanged from the original Command
+  Center build; only each page's own `WIDGETS` array and `widgetContent`
+  record differ. Widget boundaries on the four overview pages (Revenue
+  Engine, Operations, AI Team, Client Experience) are a new editorial
+  grouping of each page's existing StatTiles into 2-4 thematic widgets —
+  the underlying queries and StatTile values are unchanged, only how they're
+  bucketed for reordering/hiding purposes.
+- **Non-StatTile page content stays fixed, outside the grid** — each
+  overview page's "Go to" quick-links section, and Client Overview's
+  client list/filter/add-client form specifically, are deliberately left
+  as ordinary page furniture above or below the `DashboardGrid`, the same
+  scoping decision made for Command Center's "Current priority" banner.
+  Only the StatTile summary content is customizable.
+- **Honestly not done yet**: the four new pages' widget grids were built
+  following the exact pattern already verified end-to-end on Command
+  Center (drag/reorder, hide/show, grid/list layout, persistence all
+  confirmed live in a browser during that build), but a live browser
+  click-through of these four specific pages has not been repeated here —
+  the reasoning is that it's the same component against a different
+  `pageKey`, not new logic, but that is an assumption, not a verified fact.
